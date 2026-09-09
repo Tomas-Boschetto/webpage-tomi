@@ -1,0 +1,109 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { env } from 'cloudflare:workers';
+
+export const prerender = false;
+
+const linkedIn = env.LINKEDIN_URL || 'https://www.linkedin.com/in/your-profile';
+const siteKey = env.TURNSTILE_SITE_KEY || '';
+---
+
+<BaseLayout title="Contact" description="Get in touch or follow on LinkedIn.">
+	<header class="section-head">
+		<h1>Contact</h1>
+		<p>Say hello, ask about a recommendation, or just introduce yourself.</p>
+	</header>
+
+	<form class="form" id="contact-form" novalidate>
+		<label>
+			Name
+			<input type="text" name="name" required maxlength="120" autocomplete="name" />
+		</label>
+		<label>
+			Email
+			<input type="email" name="email" required maxlength="200" autocomplete="email" />
+		</label>
+		<label>
+			Message
+			<textarea name="message" required maxlength="4000"></textarea>
+		</label>
+
+		{
+			siteKey ? (
+				<div
+					class="cf-turnstile"
+					data-sitekey={siteKey}
+					data-theme="dark"
+					data-appearance="interaction-only"
+				/>
+			) : (
+				<p class="empty">Turnstile is not configured locally — submissions still work in dev.</p>
+			)
+		}
+
+		<div class="form__actions">
+			<button class="btn btn--primary" type="submit">Send message</button>
+			<p class="form__status" id="contact-status" role="status" aria-live="polite"></p>
+		</div>
+	</form>
+
+	<aside class="contact-aside">
+		<p>
+			Prefer social?
+			<a href={linkedIn} rel="noopener noreferrer" target="_blank">Follow me on LinkedIn</a>.
+		</p>
+	</aside>
+</BaseLayout>
+
+{
+	siteKey && (
+		<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+	)
+}
+
+<script>
+	const form = document.getElementById('contact-form') as HTMLFormElement | null;
+	const statusEl = document.getElementById('contact-status');
+
+	form?.addEventListener('submit', async (event) => {
+		event.preventDefault();
+		if (!statusEl) return;
+
+		statusEl.className = 'form__status';
+		statusEl.textContent = 'Sending…';
+
+		const data = new FormData(form);
+		const turnstileInput = form.querySelector(
+			'[name="cf-turnstile-response"]',
+		) as HTMLInputElement | null;
+
+		const payload = {
+			name: String(data.get('name') || ''),
+			email: String(data.get('email') || ''),
+			message: String(data.get('message') || ''),
+			turnstileToken: turnstileInput?.value || '',
+		};
+
+		try {
+			const res = await fetch('/api/contact', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+			const json = (await res.json()) as { error?: string; ok?: boolean };
+
+			if (!res.ok) {
+				statusEl.className = 'form__status form__status--err';
+				statusEl.textContent = json.error || 'Something went wrong.';
+				return;
+			}
+
+			statusEl.className = 'form__status form__status--ok';
+			statusEl.textContent = 'Message sent. Thanks for writing.';
+			form.reset();
+		} catch {
+			statusEl.className = 'form__status form__status--err';
+			statusEl.textContent = 'Network error. Try again in a moment.';
+		}
+	});
+</script>

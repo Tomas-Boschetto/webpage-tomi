@@ -1,0 +1,26 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"compatibility_date": "2026-09-08",
+	"compatibility_flags": ["global_fetch_strictly_public", "nodejs_compat"],
+	"name": "webpage-tomi",
+	"main": "@astrojs/cloudflare/entrypoints/server",
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "recs-db",
+			"database_id": "551ef87e-9081-4189-a24c-b99c5dbdb01c",
+			"migrations_dir": "migrations"
+		}
+	],
+	"vars": {
+		"SITE_NAME": "Tomas Boschetto",
+		"LINKEDIN_URL": "https://www.linkedin.com/tomasboschetto"
+	}
+}

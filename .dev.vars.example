@@ -1,0 +1,14 @@
+# Copy to .dev.vars for local development (never commit .dev.vars)
+
+# Allow /admin and /api/admin without Cloudflare Access locally
+ADMIN_DEV_BYPASS=true
+
+# Cloudflare Turnstile (optional locally — contact skips verify if unset)
+TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+
+# Resend (optional locally — contact logs instead of sending if unset)
+RESEND_API_KEY=
+CONTACT_FROM_EMAIL=onboarding@resend.dev
+# Keep your real inbox here locally — never commit .dev.vars
+CONTACT_TO_EMAIL=

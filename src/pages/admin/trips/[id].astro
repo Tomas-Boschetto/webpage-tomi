@@ -1,0 +1,9 @@
+---
+export const prerender = false;
+
+const id = Astro.params.id;
+if (id) {
+	return Astro.redirect(`/admin/trips?trip=${encodeURIComponent(id)}`);
+}
+return Astro.redirect('/admin/trips');
+---

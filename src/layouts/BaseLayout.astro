@@ -1,0 +1,57 @@
+---
+import '../styles/global.css';
+
+interface Props {
+	title?: string;
+	description?: string;
+}
+
+const siteName = 'Tomi';
+const { title = siteName, description = 'Personal movie, book, and travel recommendations.' } =
+	Astro.props;
+const pageTitle = title === siteName ? siteName : `${title} · ${siteName}`;
+const path = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="generator" content={Astro.generator} />
+		<meta name="description" content={description} />
+		<meta name="robots" content="index, follow" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;1,9..40,400&family=Literata:opsz,wght@7..72,400;7..72,600&family=Syne:wght@700;800&display=swap"
+			rel="stylesheet"
+		/>
+		<title>{pageTitle}</title>
+	</head>
+	<body>
+		<header class="site-header">
+			<div class="site-header__inner">
+				<a class="brand" href="/">{siteName}</a>
+				<nav class="nav" aria-label="Primary">
+					<a href="/" aria-current={path === '/' ? 'page' : undefined}>Home</a>
+					<a
+						href="/recommendations"
+						aria-current={path.startsWith('/recommendations') ? 'page' : undefined}
+						>Recommendations</a
+					>
+					<a href="/contact" aria-current={path.startsWith('/contact') ? 'page' : undefined}
+						>Contact</a
+					>
+				</nav>
+			</div>
+		</header>
+		<main class="site-main">
+			<slot />
+		</main>
+		<footer class="site-footer">
+			<p>© {new Date().getFullYear()} {siteName}. Curated recommendations, updated over time.</p>
+		</footer>
+	</body>
+</html>

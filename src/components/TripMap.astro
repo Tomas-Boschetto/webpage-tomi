@@ -1,0 +1,108 @@
+---
+import type { ItineraryItem } from '../lib/types';
+import { PLACE_TYPE_LABELS } from '../lib/types';
+
+interface Props {
+	items: ItineraryItem[];
+}
+
+const { items } = Astro.props;
+const mappable = items.filter((i) => i.lat != null && i.lng != null);
+const payload = mappable.map((i) => ({
+	id: i.id,
+	name: i.place_name,
+	type: PLACE_TYPE_LABELS[i.place_type],
+	lat: i.lat as number,
+	lng: i.lng as number,
+}));
+---
+
+{
+	mappable.length > 0 && (
+		<section class="trip-map-wrap" aria-label="Trip map">
+			<h2 class="trip-map__title">Map</h2>
+			<p class="trip-map__lead">Click a pin to jump to that stop in the itinerary.</p>
+			<div
+				class="trip-map"
+				id="trip-map"
+				data-stops={JSON.stringify(payload)}
+			/>
+		</section>
+	)
+}
+
+{
+	mappable.length > 0 && (
+		<>
+			<link
+				rel="stylesheet"
+				href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+				crossorigin=""
+			/>
+			<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" />
+			<script is:inline>
+				(function () {
+					var root = document.getElementById('trip-map');
+					if (!root || !window.L) return;
+					var stops = JSON.parse(root.getAttribute('data-stops') || '[]');
+					if (!stops.length) return;
+
+					var map = window.L.map(root, { scrollWheelZoom: false });
+					// Free OSM raster tiles — no API key required
+					window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+						attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+						maxZoom: 19,
+					}).addTo(map);
+
+					var markers = {};
+					var bounds = [];
+					stops.forEach(function (stop, index) {
+						var marker = window.L.marker([stop.lat, stop.lng], {
+							title: stop.name,
+						}).addTo(map);
+						marker.bindPopup(
+							'<strong>' +
+								stop.name +
+								'</strong><br/>' +
+								stop.type +
+								'<br/><a href="#stop-' +
+								stop.id +
+								'">View in itinerary</a>',
+						);
+						marker.on('click', function () {
+							var el = document.getElementById('stop-' + stop.id);
+							if (!el) return;
+							document.querySelectorAll('.itinerary__item--active').forEach(function (node) {
+								node.classList.remove('itinerary__item--active');
+							});
+							el.classList.add('itinerary__item--active');
+							el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+						});
+						markers[stop.id] = marker;
+						bounds.push([stop.lat, stop.lng]);
+					});
+
+					if (bounds.length === 1) {
+						map.setView(bounds[0], 13);
+					} else {
+						map.fitBounds(bounds, { padding: [40, 40] });
+					}
+
+					document.querySelectorAll('[data-stop-id]').forEach(function (el) {
+						el.addEventListener('click', function () {
+							var id = el.getAttribute('data-stop-id');
+							var marker = markers[id];
+							if (!marker) return;
+							document.querySelectorAll('.itinerary__item--active').forEach(function (node) {
+								node.classList.remove('itinerary__item--active');
+							});
+							el.classList.add('itinerary__item--active');
+							map.panTo(marker.getLatLng());
+							marker.openPopup();
+						});
+					});
+				})();
+			</script>
+		</>
+	)
+}

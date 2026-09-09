@@ -1,0 +1,94 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import TripMap from '../../components/TripMap.astro';
+import { env } from 'cloudflare:workers';
+import { formatVisitedAt, getTripWithItems } from '../../lib/trips';
+import { PLACE_TYPE_LABELS } from '../../lib/types';
+
+export const prerender = false;
+
+const trip = await getTripWithItems(env.DB, Astro.params.id!, { publishedOnly: true });
+
+if (!trip) {
+	Astro.response.status = 404;
+}
+---
+
+{
+	!trip ? (
+		<BaseLayout title="Trip not found">
+			<header class="section-head">
+				<h1>Trip not found</h1>
+				<p>
+					<a href="/recommendations?type=travel">Back to travel</a>
+				</p>
+			</header>
+		</BaseLayout>
+	) : (
+		<BaseLayout title={trip.title} description={trip.summary}>
+			<header class="section-head">
+				<p class="rec-item__meta">Trip</p>
+				<h1>{trip.title}</h1>
+				<p>{trip.summary}</p>
+				<p>
+					<a href="/recommendations?type=travel">← All trips</a>
+				</p>
+			</header>
+
+			<TripMap items={trip.items} />
+
+			{
+				trip.items.length === 0 ? (
+					<p class="empty">No itinerary stops published for this trip yet.</p>
+				) : (
+					<ol class="itinerary">
+						{trip.items.map((item) => (
+							<li
+								class="itinerary__item"
+								id={`stop-${item.id}`}
+								data-stop-id={item.lat != null && item.lng != null ? item.id : undefined}
+							>
+								<div class="itinerary__head">
+									<span class="badge">{PLACE_TYPE_LABELS[item.place_type]}</span>
+									<h2 class="itinerary__place">{item.place_name}</h2>
+								</div>
+								{item.visited_at && (
+									<p class="itinerary__when">
+										<strong>Visited:</strong> {formatVisitedAt(item.visited_at)}
+									</p>
+								)}
+								{item.country_name && (
+									<p class="itinerary__when">
+										<strong>Country:</strong> {item.country_name}
+										{item.country_code ? ` (${item.country_code})` : ''}
+									</p>
+								)}
+								<p class="itinerary__transit">
+									<strong>How I got there:</strong> {item.how_i_got_there}
+								</p>
+								{item.lat != null && item.lng != null && (
+									<p class="itinerary__coords">
+										<button type="button" class="linkish" data-stop-id={item.id}>
+											Show on map
+										</button>
+									</p>
+								)}
+								{item.notes && <p class="itinerary__notes">{item.notes}</p>}
+								{item.url && (
+									<a
+										class="rec-item__link"
+										href={item.url}
+										rel="noopener noreferrer"
+										target="_blank"
+									>
+										Link
+									</a>
+								)}
+							</li>
+						))}
+					</ol>
+				)
+			}
+		</BaseLayout>
+	)
+}

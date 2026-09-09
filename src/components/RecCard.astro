@@ -1,0 +1,72 @@
+---
+import type { Recommendation } from '../lib/types';
+import { formatExperiencedAt, formatRating } from '../lib/types';
+
+interface Props {
+	item: Recommendation;
+}
+
+const { item } = Astro.props;
+const label = item.type === 'book' ? 'Book' : 'Movie';
+const creatorLabel = item.type === 'book' ? 'Author' : 'Director';
+const whenLabel = item.type === 'book' ? 'Read' : 'Watched';
+const ratingText = formatRating(item.rating);
+const whenText = formatExperiencedAt(item.experienced_at);
+---
+
+<article class="rec-item">
+	<p class="rec-item__meta">{label}{item.genre ? ` · ${item.genre}` : ''}</p>
+	<h3 class="rec-item__title">{item.title}</h3>
+	{
+		ratingText && (
+			<p class="rec-item__rating" aria-label={`Rated ${ratingText}`}>
+				<span class="stars" aria-hidden="true">
+					{'★'.repeat(Math.round(item.rating ?? 0))}
+					{'☆'.repeat(Math.max(0, 5 - Math.round(item.rating ?? 0)))}
+				</span>
+				<span class="rec-item__rating-text">{ratingText}</span>
+			</p>
+		)
+	}
+	{whenText && (
+		<p class="rec-item__when">
+			<strong>{whenLabel}:</strong> {whenText}
+		</p>
+	)}
+	<p class="rec-item__summary">{item.summary}</p>
+	<ul class="rec-item__details">
+		{item.director && (
+			<li>
+				<strong>{creatorLabel}:</strong> {item.director}
+			</li>
+		)}
+		{item.type === 'movie' && item.cast_members && (
+			<li>
+				<strong>Cast:</strong> {item.cast_members}
+			</li>
+		)}
+	</ul>
+	<div class="rec-item__links">
+		{
+			item.type === 'movie' && item.imdb_url && (
+				<a class="rec-item__link" href={item.imdb_url} rel="noopener noreferrer" target="_blank">
+					IMDb
+				</a>
+			)
+		}
+		{
+			item.type === 'book' && item.goodreads_url && (
+				<a class="rec-item__link" href={item.goodreads_url} rel="noopener noreferrer" target="_blank">
+					Goodreads
+				</a>
+			)
+		}
+		{
+			item.url && (
+				<a class="rec-item__link" href={item.url} rel="noopener noreferrer" target="_blank">
+					More info
+				</a>
+			)
+		}
+	</div>
+</article>

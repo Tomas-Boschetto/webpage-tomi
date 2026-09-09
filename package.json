@@ -1,0 +1,30 @@
+{
+  "name": "webpage-tomi",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "generate-types": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply recs-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply recs-db --remote",
+    "deploy": "astro build && wrangler deploy"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.3.1",
+    "astro": "^7.3.2",
+    "resend": "^6.27.0"
+  },
+  "allowScripts": {
+    "esbuild": true
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "wrangler": "^4.130.0"
+  }
+}

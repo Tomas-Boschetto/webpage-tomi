@@ -1,0 +1,28 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { env } from 'cloudflare:workers';
+
+export const prerender = false;
+
+const linkedIn = env.LINKEDIN_URL || 'https://www.linkedin.com/in/your-profile';
+---
+
+<BaseLayout title="Tomi" description="Movies, books, and places worth your time.">
+	<section class="hero" aria-label="Introduction">
+		<div class="hero__media" role="presentation"></div>
+		<div class="hero__content">
+			<h1 class="hero__brand">Tomi</h1>
+			<p class="hero__lead">
+				Personal picks — films, books, and travels I keep coming back to. Updated as I find new
+				ones.
+			</p>
+			<div class="cta-row">
+				<a class="btn btn--primary" href="/recommendations">Browse recommendations</a>
+				<a class="btn btn--ghost" href={linkedIn} rel="noopener noreferrer" target="_blank"
+					>Follow on LinkedIn</a
+				>
+				<a class="btn btn--ghost" href="/contact">Get in touch</a>
+			</div>
+		</div>
+	</section>
+</BaseLayout>

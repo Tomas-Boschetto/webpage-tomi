@@ -1,0 +1,19 @@
+---
+import type { Trip } from '../lib/types';
+
+interface Props {
+	trip: Trip;
+	stopCount?: number;
+}
+
+const { trip, stopCount } = Astro.props;
+---
+
+<article class="rec-item">
+	<p class="rec-item__meta">Trip{typeof stopCount === 'number' ? ` · ${stopCount} stops` : ''}</p>
+	<h3 class="rec-item__title">
+		<a class="rec-item__title-link" href={`/trips/${trip.id}`}>{trip.title}</a>
+	</h3>
+	<p class="rec-item__summary">{trip.summary}</p>
+	<a class="rec-item__link" href={`/trips/${trip.id}`}>View itinerary</a>
+</article>
