@@ -354,25 +354,31 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 				}
 
 				target.innerHTML = filtered
-					.map(
-						(item) => `
+					.map((item) => {
+						const cover = item.image_url
+							? `<img class="admin-row__thumb" src="${escapeHtml(item.image_url)}" alt="" width="48" height="72" loading="lazy" decoding="async" />`
+							: `<span class="admin-row__thumb admin-row__thumb--empty" aria-hidden="true"></span>`;
+						return `
 					<div class="admin-row-block" data-id="${escapeHtml(item.id)}">
-						<div class="admin-row">
-							<div class="admin-row__title">${escapeHtml(item.title)}</div>
-							<div class="admin-row__meta">
-								${item.experienced_at ? `${escapeHtml(String(item.experienced_at).slice(0, 10))}` : 'No date'}
-								${item.rating != null ? ` · ${item.rating}/5` : ''}
-								${item.genre ? ` · ${escapeHtml(item.genre)}` : ''}
-								· ${item.published ? 'published' : '<span class="badge badge--draft">draft</span>'}
-							</div>
-							<div class="admin-row__actions">
-								<button class="btn btn--ghost" type="button" data-action="edit">Edit</button>
-								<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
+						<div class="admin-row admin-row--media">
+							${cover}
+							<div class="admin-row__main">
+								<div class="admin-row__title">${escapeHtml(item.title)}</div>
+								<div class="admin-row__meta">
+									${item.experienced_at ? `${escapeHtml(String(item.experienced_at).slice(0, 10))}` : 'No date'}
+									${item.rating != null ? ` · ${item.rating}/5` : ''}
+									${item.genre ? ` · ${escapeHtml(item.genre)}` : ''}
+									· ${item.published ? 'published' : '<span class="badge badge--draft">draft</span>'}
+								</div>
+								<div class="admin-row__actions">
+									<button class="btn btn--ghost" type="button" data-action="edit">Edit</button>
+									<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
+								</div>
 							</div>
 						</div>
 						<div class="admin-row__editor admin-expand" hidden></div>
-					</div>`,
-					)
+					</div>`;
+					})
 					.join('');
 
 				target.querySelectorAll('.admin-row-block').forEach((block) => {
