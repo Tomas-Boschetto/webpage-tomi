@@ -1,22 +1,28 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Planisphere from '../../../components/Planisphere.astro';
 import { env } from 'cloudflare:workers';
 import { isAdminAuthorized } from '../../../lib/auth';
+import { listCountriesFromStops } from '../../../lib/countries';
 import { PLACE_TYPES, PLACE_TYPE_LABELS } from '../../../lib/types';
 
 export const prerender = false;
 
 const authorized = isAdminAuthorized(Astro.request, env);
 const preselectId = Astro.url.searchParams.get('trip') || '';
+const placeTypeOptions = PLACE_TYPES.map((type) => ({
+	value: type,
+	label: PLACE_TYPE_LABELS[type],
+}));
+const countries = authorized
+	? await listCountriesFromStops(env.DB, { publishedOnly: false })
+	: [];
 ---
 
 <BaseLayout title="Admin · Trips" description="Manage travel trips and itineraries.">
 	<header class="section-head">
 		<h1>Trips</h1>
-		<p>
-			Create a trip (for example “Lisbon”), select it, then add itinerary stops with place type and how
-			you got there.
-		</p>
+		<p>Manage trips here. Open a trip to edit its stops on a map.</p>
 	</header>
 
 	{
@@ -27,137 +33,43 @@ const preselectId = Astro.url.searchParams.get('trip') || '';
 		) : (
 			<>
 				<nav class="tabs" aria-label="Admin sections">
-					<a href="/admin">Movies & books</a>
+					<a href="/admin?view=movies">Movies</a>
+					<a href="/admin?view=books">Books</a>
 					<a href="/admin/trips" aria-current="true">Trips</a>
 				</nav>
 
-				<div class="admin-layout admin-layout--trips" id="trips-app" data-preselect={preselectId}>
-					<section class="admin-panel">
-						<h2 id="trip-form-heading">New trip</h2>
-						<form class="form" id="trip-form">
-							<input type="hidden" id="trip-id" value="" />
-							<label>
-								Trip title
-								<input type="text" id="trip-title" required maxlength="200" placeholder="Lisbon" />
-							</label>
-							<label>
-								Summary
-								<textarea id="trip-summary" required maxlength="4000" />
-							</label>
-							<label class="checkbox-row">
-								<input type="checkbox" id="trip-published" checked />
-								Published
-							</label>
-							<div class="form__actions">
-								<button class="btn btn--primary" type="submit">Save trip</button>
-								<button class="btn btn--ghost" type="button" id="trip-reset">Clear</button>
-								<p class="form__status" id="trip-status" role="status" aria-live="polite" />
-							</div>
-						</form>
+				<Planisphere
+					id="admin-planisphere"
+					countries={countries}
+					title="Where I've been"
+					lead={
+						countries.length === 0
+							? 'Countries appear here from any trip stop you add (published or draft).'
+							: `${countries.length} ${countries.length === 1 ? 'country' : 'countries'} from your trip stops.`
+					}
+				/>
 
-						<h2 class="admin-subhead">All trips</h2>
+				<div
+					class="admin-layout admin-layout--stack"
+					id="trips-app"
+					data-preselect={preselectId}
+					data-place-types={JSON.stringify(placeTypeOptions)}
+				>
+					<section class="admin-panel">
+						<h2>Trips</h2>
 						<div class="admin-list" id="trip-list">
 							<p class="empty">Loading…</p>
 						</div>
 					</section>
 
-					<section class="admin-panel" id="itinerary-panel">
-						<h2 id="itinerary-heading">Itinerary</h2>
-						<p class="empty" id="itinerary-empty">Select or create a trip to manage its stops.</p>
-
-						<div id="itinerary-editor" hidden>
-							<p class="admin-row__meta" id="selected-trip-label"></p>
-
-							<form class="form" id="stop-form">
-								<input type="hidden" id="stop-id" value="" />
-								<label>
-									Place / destination
-									<input type="text" id="stop-place" required maxlength="200" />
-								</label>
-								<div class="form-grid-2">
-									<label>
-										Country code (ISO)
-										<input
-											type="text"
-											id="stop-country-code"
-											required
-											maxlength="2"
-											placeholder="PT"
-											pattern="[A-Za-z]{2}"
-										/>
-									</label>
-									<label>
-										Country name
-										<input
-											type="text"
-											id="stop-country-name"
-											required
-											maxlength="120"
-											placeholder="Portugal"
-										/>
-									</label>
-								</div>
-								<label>
-									Place type
-									<select id="stop-type" required>
-										{PLACE_TYPES.map((type) => (
-											<option value={type}>{PLACE_TYPE_LABELS[type]}</option>
-										))}
-									</select>
-								</label>
-								<label>
-									Date & time of visit
-									<input type="datetime-local" id="stop-visited" required />
-								</label>
-								<label>
-									How I got there
-									<input
-										type="text"
-										id="stop-transit"
-										required
-										maxlength="500"
-										placeholder="Tram 28, walked from Baixa…"
-									/>
-								</label>
-								<label>
-									Notes (optional)
-									<textarea id="stop-notes" maxlength="2000" />
-								</label>
-								<label>
-									URL (optional)
-									<input type="url" id="stop-url" maxlength="500" placeholder="https://" />
-								</label>
-								<div class="form-grid-2">
-									<label>
-										Latitude (map pin)
-										<input type="number" id="stop-lat" step="any" min="-90" max="90" placeholder="38.7223" />
-									</label>
-									<label>
-										Longitude (map pin)
-										<input type="number" id="stop-lng" step="any" min="-180" max="180" placeholder="-9.1393" />
-									</label>
-								</div>
-								<div class="form__actions">
-									<button class="btn btn--ghost" type="button" id="stop-geocode">
-										Lookup coordinates
-									</button>
-								</div>
-								<label>
-									Sort order
-									<input type="number" id="stop-order" min="0" step="1" placeholder="Auto" />
-								</label>
-								<div class="form__actions">
-									<button class="btn btn--primary" type="submit">Save stop</button>
-									<button class="btn btn--ghost" type="button" id="stop-reset">Clear stop</button>
-									<p class="form__status" id="stop-status" role="status" aria-live="polite" />
-								</div>
-							</form>
-
-							<h3 class="admin-subhead">Stops</h3>
-							<div class="admin-list" id="stop-list">
-								<p class="empty">No stops yet.</p>
-							</div>
+					<section class="admin-add">
+						<button class="btn btn--primary" type="button" id="add-trip-toggle" aria-expanded="false">
+							Add trip
+						</button>
+						<div class="admin-expand" id="add-trip-panel" hidden>
+							<div id="add-trip-form-host"></div>
 						</div>
+						<p class="form__status" id="trip-status" role="status" aria-live="polite"></p>
 					</section>
 				</div>
 			</>
@@ -170,48 +82,25 @@ const preselectId = Astro.url.searchParams.get('trip') || '';
 		<script>
 			const app = document.getElementById('trips-app');
 			const preselect = app?.dataset.preselect || '';
+			/** @type {{ value: string, label: string }[]} */
+			const placeTypes = JSON.parse(app?.dataset.placeTypes || '[]');
 
-			const tripForm = document.getElementById('trip-form');
 			const tripListEl = document.getElementById('trip-list');
 			const tripStatusEl = document.getElementById('trip-status');
-			const tripHeading = document.getElementById('trip-form-heading');
-			const tripIdField = document.getElementById('trip-id');
-			const tripTitleField = document.getElementById('trip-title');
-			const tripSummaryField = document.getElementById('trip-summary');
-			const tripPublishedField = document.getElementById('trip-published');
+			const addTripToggle = document.getElementById('add-trip-toggle');
+			const addTripPanel = document.getElementById('add-trip-panel');
+			const addTripFormHost = document.getElementById('add-trip-form-host');
 
-			const itineraryEmpty = document.getElementById('itinerary-empty');
-			const itineraryEditor = document.getElementById('itinerary-editor');
-			const itineraryHeading = document.getElementById('itinerary-heading');
-			const selectedTripLabel = document.getElementById('selected-trip-label');
-			const stopForm = document.getElementById('stop-form');
-			const stopListEl = document.getElementById('stop-list');
-			const stopStatusEl = document.getElementById('stop-status');
-			const stopIdField = document.getElementById('stop-id');
-			const stopPlaceField = document.getElementById('stop-place');
-			const stopCountryCodeField = document.getElementById('stop-country-code');
-			const stopCountryNameField = document.getElementById('stop-country-name');
-			const stopTypeField = document.getElementById('stop-type');
-			const stopVisitedField = document.getElementById('stop-visited');
-			const stopTransitField = document.getElementById('stop-transit');
-			const stopNotesField = document.getElementById('stop-notes');
-			const stopUrlField = document.getElementById('stop-url');
-			const stopLatField = document.getElementById('stop-lat');
-			const stopLngField = document.getElementById('stop-lng');
-			const stopOrderField = document.getElementById('stop-order');
+			const typeLabels = Object.fromEntries(placeTypes.map((t) => [t.value, t.label]));
 
-			const typeLabels = {
-				restaurant: 'Restaurant',
-				historic: 'Historic marker',
-				attraction: 'Attraction',
-				recreational: 'Recreational',
-				lodging: 'Lodging',
-				other: 'Other',
-			};
-
-			let selectedTripId = '';
+			/** @type {any[]} */
 			let tripsCache = [];
-			let stopsCache = [];
+			/** @type {Record<string, any[]>} */
+			const stopsByTrip = {};
+			/** @type {Set<string>} */
+			const collapsedStops = new Set();
+			/** @type {Promise<void> | null} */
+			let leafletPromise = null;
 
 			function escapeHtml(value) {
 				return String(value)
@@ -221,112 +110,736 @@ const preselectId = Astro.url.searchParams.get('trip') || '';
 					.replaceAll('"', '&quot;');
 			}
 
+			function flagUrl(code) {
+				return `https://flagcdn.com/w40/${String(code).toLowerCase()}.png`;
+			}
+
+			async function refreshAdminPlanisphere() {
+				const root = document.getElementById('admin-planisphere');
+				if (!root) return;
+				const res = await fetch('/api/admin/countries');
+				if (!res.ok) return;
+				/** @type {{ country_code: string, name: string }[]} */
+				const countries = await res.json();
+				const codes = new Set(countries.map((c) => String(c.country_code).toUpperCase()));
+
+				root.querySelectorAll('[data-planisphere-map] path[id]').forEach((path) => {
+					const code = path.id;
+					if (!/^[A-Z]{2}$/.test(code)) return;
+					path.classList.toggle('is-visited', codes.has(code));
+				});
+
+				const lead = root.querySelector('[data-planisphere-lead]');
+				if (lead) {
+					lead.textContent =
+						countries.length === 0
+							? 'Countries appear here from any trip stop you add (published or draft).'
+							: `${countries.length} ${countries.length === 1 ? 'country' : 'countries'} from your trip stops.`;
+				}
+
+				const legend = root.querySelector('[data-planisphere-legend]');
+				if (legend) {
+					legend.innerHTML = countries
+						.map(
+							(c) => `
+						<li>
+							<img class="planisphere__flag" src="${flagUrl(c.country_code)}" alt="" width="20" height="15" loading="lazy" decoding="async" />
+							<strong>${escapeHtml(c.name)}</strong>
+							<span class="planisphere__note"> (${escapeHtml(c.country_code)})</span>
+						</li>`,
+						)
+						.join('');
+				}
+			}
+
 			function setTripStatus(message, ok = true) {
+				if (!tripStatusEl) return;
 				tripStatusEl.className = `form__status ${ok ? 'form__status--ok' : 'form__status--err'}`;
 				tripStatusEl.textContent = message;
 			}
 
-			function setStopStatus(message, ok = true) {
-				stopStatusEl.className = `form__status ${ok ? 'form__status--ok' : 'form__status--err'}`;
-				stopStatusEl.textContent = message;
-			}
-
-			function resetTripForm() {
-				tripForm.reset();
-				tripIdField.value = '';
-				tripPublishedField.checked = true;
-				tripHeading.textContent = 'New trip';
-			}
-
-			function resetStopForm() {
-				stopForm.reset();
-				stopIdField.value = '';
-				stopOrderField.value = '';
-			}
-
-			function fillTripForm(trip) {
-				tripIdField.value = trip.id;
-				tripTitleField.value = trip.title;
-				tripSummaryField.value = trip.summary;
-				tripPublishedField.checked = trip.published === 1;
-				tripHeading.textContent = 'Edit trip';
-			}
-
-			function fillStopForm(item) {
-				stopIdField.value = item.id;
-				stopPlaceField.value = item.place_name;
-				stopCountryCodeField.value = item.country_code || '';
-				stopCountryNameField.value = item.country_name || '';
-				stopTypeField.value = item.place_type;
-				stopVisitedField.value = (item.visited_at || '').slice(0, 16);
-				stopTransitField.value = item.how_i_got_there;
-				stopNotesField.value = item.notes || '';
-				stopUrlField.value = item.url || '';
-				stopLatField.value = item.lat != null ? String(item.lat) : '';
-				stopLngField.value = item.lng != null ? String(item.lng) : '';
-				stopOrderField.value = String(item.sort_order);
-			}
-
 			function formatVisit(value) {
 				if (!value) return '';
-				const date = new Date(value.length === 16 ? `${value}:00` : value);
-				if (Number.isNaN(date.getTime())) return value;
-				return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+				const dateOnly = String(value).slice(0, 10);
+				const date = new Date(`${dateOnly}T12:00:00`);
+				if (Number.isNaN(date.getTime())) return dateOnly || value;
+				return date.toLocaleDateString(undefined, { dateStyle: 'medium' });
 			}
 
-			async function selectTrip(tripId) {
-				selectedTripId = tripId;
-				const trip = tripsCache.find((t) => t.id === tripId);
-				if (!trip) {
-					itineraryEmpty.hidden = false;
-					itineraryEditor.hidden = true;
+			function ensureLeaflet() {
+				if (window.L) return Promise.resolve();
+				if (leafletPromise) return leafletPromise;
+				leafletPromise = new Promise((resolve, reject) => {
+					const link = document.createElement('link');
+					link.rel = 'stylesheet';
+					link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+					link.crossOrigin = '';
+					document.head.appendChild(link);
+
+					const script = document.createElement('script');
+					script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+					script.crossOrigin = '';
+					script.onload = () => resolve();
+					script.onerror = () => reject(new Error('Failed to load map library'));
+					document.head.appendChild(script);
+				});
+				return leafletPromise;
+			}
+
+			/** @param {HTMLElement | null} el */
+			function destroyLeafletMap(el) {
+				if (!el) return;
+				const map = el._adminMap;
+				if (map) {
+					map.remove();
+					el._adminMap = null;
+				}
+			}
+
+			function invalidateSoon(map) {
+				requestAnimationFrame(() => map.invalidateSize());
+				setTimeout(() => map.invalidateSize(), 120);
+			}
+
+			/**
+			 * @param {HTMLElement} mapEl
+			 * @param {{ lat: number, lng: number, name?: string }[]} stops
+			 */
+			async function mountOverviewMap(mapEl, stops) {
+				await ensureLeaflet();
+				destroyLeafletMap(mapEl);
+				mapEl.innerHTML = '';
+
+				const L = window.L;
+				const map = L.map(mapEl, { scrollWheelZoom: false });
+				L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+					attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+					maxZoom: 19,
+				}).addTo(map);
+
+				const mappable = stops.filter((s) => s.lat != null && s.lng != null);
+				if (!mappable.length) {
+					map.setView([20, 0], 2);
+				} else {
+					const bounds = [];
+					mappable.forEach((stop) => {
+						const marker = L.marker([stop.lat, stop.lng], { title: stop.name }).addTo(map);
+						if (stop.name) marker.bindPopup(`<strong>${escapeHtml(stop.name)}</strong>`);
+						bounds.push([stop.lat, stop.lng]);
+					});
+					if (bounds.length === 1) map.setView(bounds[0], 13);
+					else map.fitBounds(bounds, { padding: [36, 36] });
+				}
+
+				mapEl._adminMap = map;
+				invalidateSoon(map);
+				return map;
+			}
+
+			/**
+			 * Click-to-place / drag pin picker. Writes hidden lat/lng inputs.
+			 * @param {HTMLElement} host
+			 * @param {{ lat?: number | null, lng?: number | null }} seed
+			 */
+			async function mountMapPicker(host, seed) {
+				await ensureLeaflet();
+				const mapEl = host.querySelector('.admin-map-picker__map');
+				const coordsEl = host.querySelector('.admin-map-picker__coords');
+				const latInput = host.querySelector('[name="lat"]');
+				const lngInput = host.querySelector('[name="lng"]');
+				const clearBtn = host.querySelector('[data-action="clear-pin"]');
+				if (!mapEl || !coordsEl || !latInput || !lngInput) return;
+
+				destroyLeafletMap(mapEl);
+				mapEl.innerHTML = '';
+
+				const L = window.L;
+				const map = L.map(mapEl, { scrollWheelZoom: true });
+				L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+					attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+					maxZoom: 19,
+				}).addTo(map);
+
+				/** @type {any} */
+				let marker = null;
+
+				function updateFields(lat, lng) {
+					latInput.value = String(lat);
+					lngInput.value = String(lng);
+					coordsEl.textContent = `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+				}
+
+				function clearPin() {
+					if (marker) {
+						map.removeLayer(marker);
+						marker = null;
+					}
+					latInput.value = '';
+					lngInput.value = '';
+					coordsEl.textContent = 'No pin set';
+				}
+
+				function setPin(latlng) {
+					if (!marker) {
+						marker = L.marker(latlng, { draggable: true }).addTo(map);
+						marker.on('dragend', () => {
+							const p = marker.getLatLng();
+							updateFields(p.lat, p.lng);
+						});
+					} else {
+						marker.setLatLng(latlng);
+					}
+					updateFields(latlng.lat, latlng.lng);
+				}
+
+				map.on('click', (event) => setPin(event.latlng));
+				clearBtn?.addEventListener('click', clearPin);
+
+				const seedLat = seed.lat != null ? Number(seed.lat) : NaN;
+				const seedLng = seed.lng != null ? Number(seed.lng) : NaN;
+				if (!Number.isNaN(seedLat) && !Number.isNaN(seedLng)) {
+					setPin(L.latLng(seedLat, seedLng));
+					map.setView([seedLat, seedLng], 13);
+				} else {
+					clearPin();
+					map.setView([20, 0], 2);
+				}
+
+				mapEl._adminMap = map;
+				invalidateSoon(map);
+			}
+
+			function closeAddTripPanel() {
+				if (!addTripPanel || !addTripToggle || !addTripFormHost) return;
+				addTripPanel.hidden = true;
+				addTripFormHost.innerHTML = '';
+				addTripToggle.setAttribute('aria-expanded', 'false');
+			}
+
+			function closeAllTripEditors() {
+				document.querySelectorAll('.admin-trip-block .admin-row__editor').forEach((el) => {
+					el.querySelectorAll('.admin-map-picker__map, .admin-stops__map').forEach((mapEl) =>
+						destroyLeafletMap(mapEl),
+					);
+					el.hidden = true;
+					el.innerHTML = '';
+				});
+				document.querySelectorAll('.admin-trip-block.is-editing, .admin-trip-block.is-managing').forEach((el) => {
+					el.classList.remove('is-editing', 'is-managing');
+				});
+				if (new URL(location.href).searchParams.has('trip')) {
+					history.replaceState({}, '', '/admin/trips');
+				}
+			}
+
+			function placeTypeOptionsHtml(selected) {
+				return placeTypes
+					.map(
+						(t) =>
+							`<option value="${escapeHtml(t.value)}"${t.value === selected ? ' selected' : ''}>${escapeHtml(t.label)}</option>`,
+					)
+					.join('');
+			}
+
+			/**
+			 * @param {any | null} trip
+			 * @param {'create' | 'edit'} mode
+			 */
+			function buildTripFormHtml(trip, mode) {
+				const id = trip?.id || '';
+				const title = escapeHtml(trip?.title || '');
+				const summary = escapeHtml(trip?.summary || '');
+				const published = !trip || trip.published === 1;
+				return `
+					<form class="form admin-entry-form" data-mode="${mode}">
+						<input type="hidden" name="id" value="${escapeHtml(id)}" />
+						<label>
+							Trip title
+							<input type="text" name="title" required maxlength="200" placeholder="Lisbon" value="${title}" />
+						</label>
+						<label>
+							Summary
+							<textarea name="summary" required maxlength="4000">${summary}</textarea>
+						</label>
+						<label class="checkbox-row">
+							<input type="checkbox" name="published" ${published ? 'checked' : ''} />
+							Published
+						</label>
+						<div class="form__actions">
+							<button class="btn btn--primary" type="submit">${mode === 'edit' ? 'Save changes' : 'Create trip'}</button>
+							<button class="btn btn--ghost" type="button" data-action="cancel">Cancel</button>
+						</div>
+					</form>
+				`;
+			}
+
+			/**
+			 * @param {any | null} item
+			 * @param {'create' | 'edit'} mode
+			 */
+			function buildStopFormHtml(item, mode) {
+				const id = item?.id || '';
+				const place = escapeHtml(item?.place_name || '');
+				const countryCode = escapeHtml(item?.country_code || '');
+				const countryName = escapeHtml(item?.country_name || '');
+				const visited = escapeHtml((item?.visited_at || '').slice(0, 10));
+				const transit = escapeHtml(item?.how_i_got_there || '');
+				const notes = escapeHtml(item?.notes || '');
+				const url = escapeHtml(item?.url || '');
+				const order = item?.sort_order != null ? String(item.sort_order) : '';
+				const selectedType = item?.place_type || placeTypes[0]?.value || 'other';
+				const lat = item?.lat != null ? String(item.lat) : '';
+				const lng = item?.lng != null ? String(item.lng) : '';
+
+				return `
+					<form class="form admin-entry-form" data-mode="${mode}">
+						<input type="hidden" name="id" value="${escapeHtml(id)}" />
+						<input type="hidden" name="lat" value="${escapeHtml(lat)}" />
+						<input type="hidden" name="lng" value="${escapeHtml(lng)}" />
+						<label>
+							Place / destination
+							<input type="text" name="place_name" required maxlength="200" value="${place}" />
+						</label>
+						<div class="form-grid-2">
+							<label>
+								Country code (ISO)
+								<input type="text" name="country_code" required maxlength="2" placeholder="PT" pattern="[A-Za-z]{2}" value="${countryCode}" />
+							</label>
+							<label>
+								Country name
+								<input type="text" name="country_name" required maxlength="120" placeholder="Portugal" value="${countryName}" />
+							</label>
+						</div>
+						<label>
+							Place type
+							<select name="place_type" required>${placeTypeOptionsHtml(selectedType)}</select>
+						</label>
+						<label>
+							Date of visit
+							<input type="date" name="visited_at" required value="${visited}" />
+						</label>
+						<label>
+							How I got there
+							<input type="text" name="how_i_got_there" required maxlength="500" placeholder="Tram 28, walked from Baixa…" value="${transit}" />
+						</label>
+						<label>
+							Notes (optional)
+							<textarea name="notes" maxlength="2000">${notes}</textarea>
+						</label>
+						<label>
+							URL (optional)
+							<input type="url" name="url" maxlength="500" placeholder="https://" value="${url}" />
+						</label>
+						<label>
+							Sort order
+							<input type="number" name="sort_order" min="0" step="1" placeholder="Auto" value="${escapeHtml(order)}" />
+						</label>
+						<div class="admin-map-picker">
+							<p class="admin-map-picker__label">Map pin</p>
+							<p class="admin-map-picker__hint">Click the map to place the pin. Drag to adjust.</p>
+							<div class="admin-map-picker__map trip-map" role="application" aria-label="Choose stop location"></div>
+							<div class="admin-map-picker__meta">
+								<p class="admin-map-picker__coords" aria-live="polite">No pin set</p>
+								<button class="btn btn--ghost" type="button" data-action="clear-pin">Clear pin</button>
+							</div>
+						</div>
+						<div class="form__actions">
+							<button class="btn btn--primary" type="submit">${mode === 'edit' ? 'Save stop' : 'Add stop'}</button>
+							<button class="btn btn--ghost" type="button" data-action="cancel">Cancel</button>
+							<p class="form__status" data-stop-status role="status" aria-live="polite"></p>
+						</div>
+					</form>
+				`;
+			}
+
+			/**
+			 * @param {HTMLFormElement} form
+			 */
+			function tripPayloadFromForm(form) {
+				const data = new FormData(form);
+				return {
+					title: String(data.get('title') || ''),
+					summary: String(data.get('summary') || ''),
+					published: form.querySelector('[name="published"]')?.checked === true,
+				};
+			}
+
+			/**
+			 * @param {HTMLFormElement} form
+			 */
+			function stopPayloadFromForm(form) {
+				const data = new FormData(form);
+				const orderRaw = String(data.get('sort_order') || '').trim();
+				const latRaw = String(data.get('lat') || '').trim();
+				const lngRaw = String(data.get('lng') || '').trim();
+				const payload = {
+					place_name: String(data.get('place_name') || ''),
+					country_code: String(data.get('country_code') || ''),
+					country_name: String(data.get('country_name') || ''),
+					place_type: String(data.get('place_type') || ''),
+					visited_at: String(data.get('visited_at') || ''),
+					how_i_got_there: String(data.get('how_i_got_there') || ''),
+					notes: String(data.get('notes') || '') || null,
+					url: String(data.get('url') || '') || null,
+					lat: latRaw === '' ? null : Number(latRaw),
+					lng: lngRaw === '' ? null : Number(lngRaw),
+				};
+				if (orderRaw !== '') payload.sort_order = Number(orderRaw);
+				return payload;
+			}
+
+			/**
+			 * @param {HTMLElement} host
+			 * @param {any | null} trip
+			 * @param {'create' | 'edit'} mode
+			 * @param {() => void} onCancel
+			 */
+			function mountTripForm(host, trip, mode, onCancel) {
+				host.innerHTML = buildTripFormHtml(trip, mode);
+				const form = host.querySelector('form');
+				form?.querySelector('[data-action="cancel"]')?.addEventListener('click', onCancel);
+				form?.addEventListener('submit', async (event) => {
+					event.preventDefault();
+					const editingId = String(new FormData(form).get('id') || '');
+					const payload = tripPayloadFromForm(form);
+					const res = await fetch(editingId ? `/api/admin/trips/${editingId}` : '/api/admin/trips', {
+						method: editingId ? 'PUT' : 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(payload),
+					});
+					const json = await res.json();
+					if (!res.ok) {
+						setTripStatus(json.error || 'Save failed.', false);
+						return;
+					}
+					setTripStatus(editingId ? 'Trip updated.' : 'Trip created.');
+					onCancel();
+					await loadTrips();
+					if (!editingId && json.id) await openManageStops(json.id);
+				});
+			}
+
+			/**
+			 * @param {HTMLElement} host
+			 * @param {string} tripId
+			 * @param {any | null} item
+			 * @param {'create' | 'edit'} mode
+			 * @param {() => void} onDone
+			 */
+			function mountStopForm(host, tripId, item, mode, onDone) {
+				host.innerHTML = buildStopFormHtml(item, mode);
+				const form = host.querySelector('form');
+				const statusEl = host.querySelector('[data-stop-status]');
+
+				function setStopStatus(message, ok = true) {
+					if (!statusEl) return;
+					statusEl.className = `form__status ${ok ? 'form__status--ok' : 'form__status--err'}`;
+					statusEl.textContent = message;
+				}
+
+				form?.querySelector('[data-action="cancel"]')?.addEventListener('click', onDone);
+				void mountMapPicker(host, { lat: item?.lat ?? null, lng: item?.lng ?? null });
+
+				form?.addEventListener('submit', async (event) => {
+					event.preventDefault();
+					const editingId = String(new FormData(form).get('id') || '');
+					const payload = stopPayloadFromForm(form);
+					const res = await fetch(
+						editingId ? `/api/admin/itinerary/${editingId}` : `/api/admin/trips/${tripId}/itinerary`,
+						{
+							method: editingId ? 'PUT' : 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify(payload),
+						},
+					);
+					const json = await res.json();
+					if (!res.ok) {
+						setStopStatus(json.error || 'Save failed.', false);
+						return;
+					}
+					setTripStatus(editingId ? 'Stop updated.' : 'Stop added.');
+					onDone();
+					await refreshManagePanel(tripId);
+					await refreshAdminPlanisphere();
+				});
+			}
+
+			async function loadStops(tripId) {
+				const res = await fetch(`/api/admin/trips/${tripId}`);
+				if (!res.ok) {
+					stopsByTrip[tripId] = [];
+					throw new Error('Failed to load stops');
+				}
+				const data = await res.json();
+				stopsByTrip[tripId] = data.items || [];
+				return stopsByTrip[tripId];
+			}
+
+			/**
+			 * @param {HTMLElement} listEl
+			 * @param {string} tripId
+			 * @param {any[]} stops
+			 */
+			function renderStopList(listEl, tripId, stops) {
+				if (!stops.length) {
+					listEl.innerHTML = '<p class="empty">No stops yet.</p>';
 					return;
 				}
 
-				itineraryEmpty.hidden = true;
-				itineraryEditor.hidden = false;
-				itineraryHeading.textContent = `Itinerary · ${trip.title}`;
-				selectedTripLabel.textContent = `Editing stops for “${trip.title}”`;
-				resetStopForm();
-				setStopStatus('');
-				await loadStops();
-				renderTripList();
+				listEl.innerHTML = stops
+					.map(
+						(item) => `
+					<div class="admin-row-block admin-stop-block" data-stop-id="${escapeHtml(item.id)}">
+						<div class="admin-row">
+							<div class="admin-row__title">${escapeHtml(item.place_name)}</div>
+							<div class="admin-row__meta">
+								${formatVisit(item.visited_at)} · ${escapeHtml(item.country_name || item.country_code || '')}
+								· #${item.sort_order} · ${escapeHtml(typeLabels[item.place_type] || item.place_type)}
+								· ${escapeHtml(item.how_i_got_there)}${
+									item.lat != null && item.lng != null ? ' · on map' : ''
+								}
+							</div>
+							<div class="admin-row__actions">
+								<button class="btn btn--ghost" type="button" data-action="edit-stop">Edit</button>
+								<button class="btn btn--danger" type="button" data-action="delete-stop">Delete</button>
+							</div>
+						</div>
+						<div class="admin-row__editor admin-expand" hidden></div>
+					</div>`,
+					)
+					.join('');
+
+				listEl.querySelectorAll('.admin-stop-block').forEach((block) => {
+					const stopId = block.dataset.stopId;
+					const item = stops.find((s) => s.id === stopId);
+					if (!item) return;
+
+					block.querySelector('[data-action="edit-stop"]')?.addEventListener('click', () => {
+						closeStopEditors(listEl);
+						closeAddStopPanel(listEl.closest('.admin-stops'));
+						const already = block.classList.contains('is-editing');
+						if (already) return;
+						block.classList.add('is-editing');
+						const editor = block.querySelector('.admin-row__editor');
+						if (!editor) return;
+						editor.hidden = false;
+						mountStopForm(editor, tripId, item, 'edit', () => {
+							closeStopEditors(listEl);
+						});
+					});
+
+					block.querySelector('[data-action="delete-stop"]')?.addEventListener('click', async () => {
+						if (!confirm(`Delete “${item.place_name}”?`)) return;
+						const del = await fetch(`/api/admin/itinerary/${stopId}`, { method: 'DELETE' });
+						if (!del.ok) {
+							setTripStatus('Delete failed.', false);
+							return;
+						}
+						setTripStatus('Stop deleted.');
+						await refreshManagePanel(tripId);
+						await refreshAdminPlanisphere();
+					});
+				});
+			}
+
+			/** @param {HTMLElement} listEl */
+			function closeStopEditors(listEl) {
+				listEl.querySelectorAll('.admin-stop-block .admin-row__editor').forEach((el) => {
+					el.querySelectorAll('.admin-map-picker__map').forEach((mapEl) => destroyLeafletMap(mapEl));
+					el.hidden = true;
+					el.innerHTML = '';
+				});
+				listEl.querySelectorAll('.admin-stop-block.is-editing').forEach((el) => {
+					el.classList.remove('is-editing');
+				});
+			}
+
+			/** @param {HTMLElement | null} stopsRoot */
+			function closeAddStopPanel(stopsRoot) {
+				if (!stopsRoot) return;
+				const panel = stopsRoot.querySelector('[data-add-stop-panel]');
+				const toggle = stopsRoot.querySelector('[data-add-stop-toggle]');
+				const host = stopsRoot.querySelector('[data-add-stop-host]');
+				if (host) {
+					host.querySelectorAll('.admin-map-picker__map').forEach((mapEl) => destroyLeafletMap(mapEl));
+					host.innerHTML = '';
+				}
+				if (panel) panel.hidden = true;
+				toggle?.setAttribute('aria-expanded', 'false');
+			}
+
+			async function refreshManagePanel(tripId) {
+				const block = document.querySelector(`.admin-trip-block[data-id="${CSS.escape(tripId)}"]`);
+				if (!block || !block.classList.contains('is-managing')) return;
+				const editor = block.querySelector('.admin-row__editor');
+				if (!editor) return;
+				await mountManagePanel(editor, tripId);
+			}
+
+			/**
+			 * @param {HTMLElement} editor
+			 * @param {string} tripId
+			 */
+			async function mountManagePanel(editor, tripId) {
+				editor.querySelectorAll('.admin-map-picker__map, .admin-stops__map').forEach((mapEl) =>
+					destroyLeafletMap(mapEl),
+				);
+
+				let stops = [];
+				try {
+					stops = await loadStops(tripId);
+				} catch {
+					editor.innerHTML = '<p class="form__status form__status--err">Failed to load stops.</p>';
+					return;
+				}
+
+				const bodyCollapsed = collapsedStops.has(tripId);
+				editor.hidden = false;
+				editor.innerHTML = `
+					<div class="admin-stops">
+						<div class="admin-stops__map-wrap">
+							<div class="admin-stops__map trip-map" data-overview-map role="application" aria-label="Trip stops map"></div>
+							<p class="admin-stops__hint">Stops with a pin appear on this map. Use Edit on a stop to move its pin.</p>
+						</div>
+						<div class="admin-stops__body" data-stops-body ${bodyCollapsed ? 'hidden' : ''}>
+							<div class="admin-list" data-stop-list></div>
+							<section class="admin-add">
+								<div class="admin-stops__actions">
+									<button class="btn btn--primary" type="button" data-add-stop-toggle aria-expanded="false">Add stop</button>
+									<button class="btn btn--ghost" type="button" data-collapse-stops>Collapse</button>
+								</div>
+								<div class="admin-expand" data-add-stop-panel hidden>
+									<div data-add-stop-host></div>
+								</div>
+							</section>
+						</div>
+						<button class="btn btn--ghost" type="button" data-expand-stops ${bodyCollapsed ? '' : 'hidden'}>
+							Show stops
+						</button>
+					</div>
+				`;
+
+				const overviewEl = editor.querySelector('[data-overview-map]');
+				const listEl = editor.querySelector('[data-stop-list]');
+				const bodyEl = editor.querySelector('[data-stops-body]');
+				const addToggle = editor.querySelector('[data-add-stop-toggle]');
+				const addPanel = editor.querySelector('[data-add-stop-panel]');
+				const addHost = editor.querySelector('[data-add-stop-host]');
+				const collapseBtn = editor.querySelector('[data-collapse-stops]');
+				const expandBtn = editor.querySelector('[data-expand-stops]');
+
+				if (overviewEl) {
+					await mountOverviewMap(
+						overviewEl,
+						stops.map((s) => ({ lat: s.lat, lng: s.lng, name: s.place_name })),
+					);
+				}
+				if (listEl) renderStopList(listEl, tripId, stops);
+
+				function setStopsCollapsed(collapsed) {
+					if (collapsed) collapsedStops.add(tripId);
+					else collapsedStops.delete(tripId);
+					if (bodyEl) bodyEl.hidden = collapsed;
+					if (expandBtn) expandBtn.hidden = !collapsed;
+					if (collapsed && listEl) {
+						closeStopEditors(listEl);
+						closeAddStopPanel(editor.querySelector('.admin-stops'));
+					}
+					if (overviewEl?._adminMap) invalidateSoon(overviewEl._adminMap);
+				}
+
+				collapseBtn?.addEventListener('click', () => setStopsCollapsed(true));
+				expandBtn?.addEventListener('click', () => setStopsCollapsed(false));
+
+				addToggle?.addEventListener('click', () => {
+					if (!listEl || !addPanel || !addHost) return;
+					closeStopEditors(listEl);
+					if (!addPanel.hidden) {
+						closeAddStopPanel(editor.querySelector('.admin-stops'));
+						return;
+					}
+					addPanel.hidden = false;
+					addToggle.setAttribute('aria-expanded', 'true');
+					mountStopForm(addHost, tripId, null, 'create', () => {
+						closeAddStopPanel(editor.querySelector('.admin-stops'));
+					});
+				});
+			}
+
+			async function openManageStops(tripId) {
+				closeAddTripPanel();
+				const already =
+					document.querySelector(`.admin-trip-block[data-id="${CSS.escape(tripId)}"].is-managing`) !=
+					null;
+				closeAllTripEditors();
+				if (already) return;
+
+				const block = document.querySelector(`.admin-trip-block[data-id="${CSS.escape(tripId)}"]`);
+				const editor = block?.querySelector('.admin-row__editor');
+				if (!block || !editor) return;
+
+				block.classList.add('is-managing');
 				history.replaceState({}, '', `/admin/trips?trip=${encodeURIComponent(tripId)}`);
+				await mountManagePanel(editor, tripId);
+			}
+
+			function openEditTrip(tripId) {
+				closeAddTripPanel();
+				const already =
+					document.querySelector(`.admin-trip-block[data-id="${CSS.escape(tripId)}"].is-editing`) !=
+					null;
+				closeAllTripEditors();
+				if (already) return;
+
+				const trip = tripsCache.find((t) => t.id === tripId);
+				const block = document.querySelector(`.admin-trip-block[data-id="${CSS.escape(tripId)}"]`);
+				const editor = block?.querySelector('.admin-row__editor');
+				if (!trip || !block || !editor) return;
+
+				block.classList.add('is-editing');
+				editor.hidden = false;
+				mountTripForm(editor, trip, 'edit', () => closeAllTripEditors());
 			}
 
 			function renderTripList() {
+				if (!tripListEl) return;
 				if (!tripsCache.length) {
-					tripListEl.innerHTML = '<p class="empty">No trips yet. Create one above.</p>';
+					tripListEl.innerHTML = '<p class="empty">No trips yet.</p>';
 					return;
 				}
 
 				tripListEl.innerHTML = tripsCache
-					.map((trip) => {
-						const selected = trip.id === selectedTripId ? ' admin-row--selected' : '';
-						return `
-					<div class="admin-row${selected}" data-id="${trip.id}">
-						<div class="admin-row__title">${escapeHtml(trip.title)}</div>
-						<div class="admin-row__meta">
-							${trip.published ? 'published' : '<span class="badge badge--draft">draft</span>'} · ${trip.created_at}
+					.map(
+						(trip) => `
+					<div class="admin-row-block admin-trip-block" data-id="${escapeHtml(trip.id)}">
+						<div class="admin-row">
+							<div class="admin-row__title">${escapeHtml(trip.title)}</div>
+							<div class="admin-row__meta">
+								${trip.published ? 'published' : '<span class="badge badge--draft">draft</span>'} · ${escapeHtml(trip.created_at)}
+							</div>
+							<div class="admin-row__actions">
+								<button class="btn btn--primary" type="button" data-action="manage">Manage stops</button>
+								<button class="btn btn--ghost" type="button" data-action="edit">Edit</button>
+								<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
+							</div>
 						</div>
-						<div class="admin-row__actions">
-							<button class="btn btn--primary" type="button" data-action="manage">Manage stops</button>
-							<button class="btn btn--ghost" type="button" data-action="edit">Edit trip</button>
-							<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
-						</div>
-					</div>`;
-					})
+						<div class="admin-row__editor admin-expand" hidden></div>
+					</div>`,
+					)
 					.join('');
 
-				tripListEl.querySelectorAll('.admin-row').forEach((row) => {
-					const id = row.dataset.id;
+				tripListEl.querySelectorAll('.admin-trip-block').forEach((block) => {
+					const id = block.dataset.id;
 					const trip = tripsCache.find((t) => t.id === id);
-					row.querySelector('[data-action="manage"]').addEventListener('click', () => selectTrip(id));
-					row.querySelector('[data-action="edit"]').addEventListener('click', () => {
-						fillTripForm(trip);
-						window.scrollTo({ top: 0, behavior: 'smooth' });
+					if (!trip) return;
+
+					block.querySelector('[data-action="manage"]')?.addEventListener('click', () => {
+						void openManageStops(id);
 					});
-					row.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+					block.querySelector('[data-action="edit"]')?.addEventListener('click', () => {
+						openEditTrip(id);
+					});
+					block.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
 						if (!confirm(`Delete trip “${trip.title}” and all its stops?`)) return;
 						const del = await fetch(`/api/admin/trips/${id}`, { method: 'DELETE' });
 						if (!del.ok) {
@@ -334,64 +847,16 @@ const preselectId = Astro.url.searchParams.get('trip') || '';
 							return;
 						}
 						setTripStatus('Trip deleted.');
-						if (tripIdField.value === id) resetTripForm();
-						if (selectedTripId === id) {
-							selectedTripId = '';
-							itineraryEmpty.hidden = false;
-							itineraryEditor.hidden = true;
-							itineraryHeading.textContent = 'Itinerary';
-							history.replaceState({}, '', '/admin/trips');
-						}
+						closeAllTripEditors();
+						closeAddTripPanel();
 						await loadTrips();
-					});
-				});
-			}
-
-			function renderStops() {
-				if (!stopsCache.length) {
-					stopListEl.innerHTML = '<p class="empty">No stops yet. Add one above.</p>';
-					return;
-				}
-
-				stopListEl.innerHTML = stopsCache
-					.map(
-						(item) => `
-					<div class="admin-row" data-id="${item.id}">
-						<div class="admin-row__title">${escapeHtml(item.place_name)}</div>
-						<div class="admin-row__meta">
-							${formatVisit(item.visited_at)} · ${escapeHtml(item.country_name || item.country_code || '')}
-							· #${item.sort_order} · ${typeLabels[item.place_type] || item.place_type}
-							· ${escapeHtml(item.how_i_got_there)}${
-								item.lat != null && item.lng != null ? ' · on map' : ''
-							}
-						</div>
-						<div class="admin-row__actions">
-							<button class="btn btn--ghost" type="button" data-action="edit">Edit</button>
-							<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
-						</div>
-					</div>`,
-					)
-					.join('');
-
-				stopListEl.querySelectorAll('.admin-row').forEach((row) => {
-					const id = row.dataset.id;
-					const item = stopsCache.find((s) => s.id === id);
-					row.querySelector('[data-action="edit"]').addEventListener('click', () => fillStopForm(item));
-					row.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-						if (!confirm(`Delete “${item.place_name}”?`)) return;
-						const del = await fetch(`/api/admin/itinerary/${id}`, { method: 'DELETE' });
-						if (!del.ok) {
-							setStopStatus('Delete failed.', false);
-							return;
-						}
-						setStopStatus('Stop deleted.');
-						if (stopIdField.value === id) resetStopForm();
-						await loadStops();
+						await refreshAdminPlanisphere();
 					});
 				});
 			}
 
 			async function loadTrips() {
+				if (!tripListEl) return;
 				const res = await fetch('/api/admin/trips');
 				if (!res.ok) {
 					tripListEl.innerHTML = '<p class="form__status form__status--err">Failed to load trips.</p>';
@@ -401,127 +866,23 @@ const preselectId = Astro.url.searchParams.get('trip') || '';
 				renderTripList();
 			}
 
-			async function loadStops() {
-				if (!selectedTripId) return;
-				const res = await fetch(`/api/admin/trips/${selectedTripId}`);
-				if (!res.ok) {
-					stopListEl.innerHTML = '<p class="form__status form__status--err">Failed to load stops.</p>';
+			addTripToggle?.addEventListener('click', () => {
+				closeAllTripEditors();
+				if (!addTripPanel || !addTripFormHost) return;
+				if (!addTripPanel.hidden) {
+					closeAddTripPanel();
 					return;
 				}
-				const data = await res.json();
-				stopsCache = data.items || [];
-				renderStops();
-			}
-
-			tripForm.addEventListener('submit', async (event) => {
-				event.preventDefault();
-				const payload = {
-					title: tripTitleField.value,
-					summary: tripSummaryField.value,
-					published: tripPublishedField.checked,
-				};
-				const editingId = tripIdField.value;
-				const res = await fetch(editingId ? `/api/admin/trips/${editingId}` : '/api/admin/trips', {
-					method: editingId ? 'PUT' : 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload),
-				});
-				const json = await res.json();
-				if (!res.ok) {
-					setTripStatus(json.error || 'Save failed.', false);
-					return;
-				}
-				setTripStatus(editingId ? 'Trip updated.' : 'Trip created — add stops on the right.');
-				resetTripForm();
-				await loadTrips();
-				await selectTrip(json.id);
-			});
-
-			document.getElementById('trip-reset').addEventListener('click', () => {
-				resetTripForm();
+				addTripPanel.hidden = false;
+				addTripToggle.setAttribute('aria-expanded', 'true');
 				setTripStatus('');
-			});
-
-			stopForm.addEventListener('submit', async (event) => {
-				event.preventDefault();
-				if (!selectedTripId) {
-					setStopStatus('Select a trip first.', false);
-					return;
-				}
-				const orderRaw = stopOrderField.value.trim();
-				const latRaw = stopLatField.value.trim();
-				const lngRaw = stopLngField.value.trim();
-				const payload = {
-					place_name: stopPlaceField.value,
-					country_code: stopCountryCodeField.value,
-					country_name: stopCountryNameField.value,
-					place_type: stopTypeField.value,
-					visited_at: stopVisitedField.value,
-					how_i_got_there: stopTransitField.value,
-					notes: stopNotesField.value || null,
-					url: stopUrlField.value || null,
-					lat: latRaw === '' ? null : Number(latRaw),
-					lng: lngRaw === '' ? null : Number(lngRaw),
-				};
-				if (orderRaw !== '') payload.sort_order = Number(orderRaw);
-
-				const editingId = stopIdField.value;
-				const res = await fetch(
-					editingId
-						? `/api/admin/itinerary/${editingId}`
-						: `/api/admin/trips/${selectedTripId}/itinerary`,
-					{
-						method: editingId ? 'PUT' : 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(payload),
-					},
-				);
-				const json = await res.json();
-				if (!res.ok) {
-					setStopStatus(json.error || 'Save failed.', false);
-					return;
-				}
-				setStopStatus(editingId ? 'Stop updated.' : 'Stop added.');
-				resetStopForm();
-				await loadStops();
-			});
-
-			document.getElementById('stop-reset').addEventListener('click', () => {
-				resetStopForm();
-				setStopStatus('');
-			});
-
-			document.getElementById('stop-geocode').addEventListener('click', async () => {
-				const query = stopPlaceField.value.trim();
-				if (!query) {
-					setStopStatus('Enter a place name first.', false);
-					return;
-				}
-				setStopStatus('Looking up…');
-				try {
-					const url =
-						'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
-						encodeURIComponent(query);
-					const res = await fetch(url, {
-						headers: { Accept: 'application/json' },
-					});
-					const results = await res.json();
-					if (!results.length) {
-						setStopStatus('No coordinates found for that place.', false);
-						return;
-					}
-					stopLatField.value = String(Number(results[0].lat));
-					stopLngField.value = String(Number(results[0].lon));
-					setStopStatus('Coordinates filled — save the stop to keep them.');
-				} catch {
-					setStopStatus('Lookup failed. Enter lat/lng manually.', false);
-				}
+				mountTripForm(addTripFormHost, null, 'create', () => closeAddTripPanel());
 			});
 
 			(async () => {
 				await loadTrips();
 				if (preselect && tripsCache.some((t) => t.id === preselect)) {
-					await selectTrip(preselect);
+					await openManageStops(preselect);
 				}
 			})();
 		</script>

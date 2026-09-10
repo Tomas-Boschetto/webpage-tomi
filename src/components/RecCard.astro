@@ -12,9 +12,24 @@ const creatorLabel = item.type === 'book' ? 'Author' : 'Director';
 const whenLabel = item.type === 'book' ? 'Read' : 'Watched';
 const ratingText = formatRating(item.rating);
 const whenText = formatExperiencedAt(item.experienced_at);
+const hasCover = Boolean(item.image_url);
 ---
 
-<article class="rec-item">
+<article class:list={['rec-item', hasCover && 'rec-item--with-cover']}>
+	{
+		hasCover && (
+			<div class="rec-item__media">
+				<img
+					src={item.image_url!}
+					alt=""
+					width="140"
+					height="210"
+					loading="lazy"
+					decoding="async"
+				/>
+			</div>
+		)
+	}
 	<p class="rec-item__meta">{label}{item.genre ? ` · ${item.genre}` : ''}</p>
 	<h3 class="rec-item__title">{item.title}</h3>
 	{
@@ -56,7 +71,12 @@ const whenText = formatExperiencedAt(item.experienced_at);
 		}
 		{
 			item.type === 'book' && item.goodreads_url && (
-				<a class="rec-item__link" href={item.goodreads_url} rel="noopener noreferrer" target="_blank">
+				<a
+					class="rec-item__link"
+					href={item.goodreads_url}
+					rel="noopener noreferrer"
+					target="_blank"
+				>
 					Goodreads
 				</a>
 			)

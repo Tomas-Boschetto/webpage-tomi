@@ -346,32 +346,29 @@ function parseOptionalCoords(
 	return { lat: latN, lng: lngN };
 }
 
-/** Accepts datetime-local values like 2024-05-12T18:30 or full ISO strings. */
+/** Accepts YYYY-MM-DD (preferred) or legacy datetime-local / ISO values. Stores date-only. */
 function parseVisitedAt(value: unknown): { value: string } | { error: string } {
 	if (typeof value !== 'string' || !value.trim()) {
-		return { error: 'visited_at (date and time) is required' };
+		return { error: 'visited_at (date) is required' };
 	}
 	const trimmed = value.trim();
-	const normalized = trimmed.length === 16 ? `${trimmed}:00` : trimmed;
-	const date = new Date(normalized);
-	if (Number.isNaN(date.getTime())) {
-		return { error: 'visited_at must be a valid date and time' };
+	const dateOnly = trimmed.slice(0, 10);
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+		return { error: 'visited_at must be a valid date (YYYY-MM-DD)' };
 	}
-	// Store as YYYY-MM-DDTHH:mm for datetime-local round-trips
-	const pad = (n: number) => String(n).padStart(2, '0');
-	const localLike =
-		trimmed.length >= 16
-			? trimmed.slice(0, 16)
-			: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-	return { value: localLike };
+	const date = new Date(`${dateOnly}T12:00:00`);
+	if (Number.isNaN(date.getTime())) {
+		return { error: 'visited_at must be a valid date' };
+	}
+	return { value: dateOnly };
 }
 
 export function formatVisitedAt(value: string | null | undefined): string {
 	if (!value) return '';
-	const date = new Date(value.length === 16 ? `${value}:00` : value);
-	if (Number.isNaN(date.getTime())) return value;
-	return date.toLocaleString(undefined, {
+	const dateOnly = value.slice(0, 10);
+	const date = new Date(`${dateOnly}T12:00:00`);
+	if (Number.isNaN(date.getTime())) return dateOnly || value;
+	return date.toLocaleDateString(undefined, {
 		dateStyle: 'medium',
-		timeStyle: 'short',
 	});
 }

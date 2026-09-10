@@ -39,6 +39,9 @@ const year = new Date().getFullYear();
 				<a class="brand" href="/">{siteName}</a>
 				<nav class="nav" aria-label="Primary">
 					<a href="/" aria-current={path === '/' ? 'page' : undefined}>Home</a>
+					<a href="/about" aria-current={path.startsWith('/about') ? 'page' : undefined}
+						>About me</a
+					>
 					<a
 						href="/recommendations"
 						aria-current={path.startsWith('/recommendations') ? 'page' : undefined}
