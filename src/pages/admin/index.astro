@@ -361,7 +361,6 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 						return `
 					<div class="admin-row-block" data-id="${escapeHtml(item.id)}">
 						<div class="admin-row admin-row--media">
-							${cover}
 							<div class="admin-row__main">
 								<div class="admin-row__title">${escapeHtml(item.title)}</div>
 								<div class="admin-row__meta">
@@ -375,6 +374,7 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 									<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
 								</div>
 							</div>
+							${cover}
 						</div>
 						<div class="admin-row__editor admin-expand" hidden></div>
 					</div>`;
