@@ -40,7 +40,7 @@ In the Worker/Pages project → **Settings → Variables and Secrets**, set:
 | `LINKEDIN_URL` | var | Your LinkedIn profile URL |
 | `CONTACT_TO_EMAIL` | **secret** | Your inbox — do not put this in the public repo |
 | `CONTACT_FROM_EMAIL` | var | Verified sender in Resend |
-| `SITE_NAME` | var | e.g. `Tomi` |
+| `SITE_NAME` | var | e.g. `Tomas Boschetto` |
 | `TURNSTILE_SITE_KEY` | var | From Turnstile widget |
 | `TURNSTILE_SECRET_KEY` | secret | From Turnstile |
 | `RESEND_API_KEY` | secret | From Resend |

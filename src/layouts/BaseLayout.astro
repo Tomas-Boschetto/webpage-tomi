@@ -1,16 +1,19 @@
 ---
 import '../styles/global.css';
+import { env } from 'cloudflare:workers';
 
 interface Props {
 	title?: string;
 	description?: string;
 }
 
-const siteName = 'Tomi';
+const siteName = env.SITE_NAME || 'Tomas Boschetto';
+const linkedIn = env.LINKEDIN_URL || 'https://www.linkedin.com/in/tomasboschetto/';
 const { title = siteName, description = 'Personal movie, book, and travel recommendations.' } =
 	Astro.props;
 const pageTitle = title === siteName ? siteName : `${title} · ${siteName}`;
 const path = Astro.url.pathname;
+const year = new Date().getFullYear();
 ---
 
 <!doctype html>
@@ -51,7 +54,15 @@ const path = Astro.url.pathname;
 			<slot />
 		</main>
 		<footer class="site-footer">
-			<p>© {new Date().getFullYear()} {siteName}. Curated recommendations, updated over time.</p>
+			<div class="site-footer__inner">
+				<p class="site-footer__copy">
+					© {year}. {siteName}. My own journeys with mind or body
+				</p>
+				<nav class="site-footer__links" aria-label="Footer">
+					<a href={linkedIn} rel="noopener noreferrer" target="_blank">Follow on LinkedIn</a>
+					<a href="/contact">Get in touch</a>
+				</nav>
+			</div>
 		</footer>
 	</body>
 </html>

@@ -4,8 +4,8 @@
 interface __BaseEnv_Env {
 	DB: D1Database;
 	ASSETS: Fetcher;
-	SITE_NAME: "Tomi";
-	LINKEDIN_URL: "https://www.linkedin.com/in/your-profile";
+	SITE_NAME: "Tomas Boschetto";
+	LINKEDIN_URL: "https://www.linkedin.com/in/tomasboschetto/";
 	CONTACT_TO_EMAIL: "you@example.com";
 	ADMIN_DEV_BYPASS: string;
 	TURNSTILE_SITE_KEY: string;
