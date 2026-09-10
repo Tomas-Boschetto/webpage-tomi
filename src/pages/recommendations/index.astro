@@ -5,7 +5,16 @@ import TripCard from '../../components/TripCard.astro';
 import Planisphere from '../../components/Planisphere.astro';
 import { env } from 'cloudflare:workers';
 import { listPublished } from '../../lib/db';
-import { listCountriesFromPublishedStops } from '../../lib/countries';
+import { listCountriesFromPublishedStops, listPublishedTripIdsForCountry } from '../../lib/countries';
+import {
+	extractGenres,
+	filterAndSortRecommendations,
+	parseMinRating,
+	parseRecSort,
+	parseTripSort,
+	sortTrips,
+} from '../../lib/rec-filters';
+import { coverSourceFromUrl } from '../../lib/covers';
 import { listItineraryForTrip, listPublishedTrips } from '../../lib/trips';
 import { isRecommendationType, type RecommendationType } from '../../lib/types';
 
@@ -17,9 +26,40 @@ const activeType: RecommendationType | undefined = isRecommendationType(typePara
 	? typeParam
 	: undefined;
 
-const mediaItems = showTravel ? [] : await listPublished(env.DB, activeType);
-const trips = !activeType || showTravel ? await listPublishedTrips(env.DB) : [];
+const genreParam = Astro.url.searchParams.get('genre')?.trim() || '';
+const countryParam = Astro.url.searchParams.get('country')?.trim().toUpperCase() || '';
+const sortParam = Astro.url.searchParams.get('sort');
+const minRating = parseMinRating(Astro.url.searchParams.get('min_rating'));
+const recSort = parseRecSort(sortParam);
+const tripSort = parseTripSort(sortParam);
+
+const allMedia = showTravel ? [] : await listPublished(env.DB, activeType);
+const genres = extractGenres(allMedia);
+const mediaItems = filterAndSortRecommendations(allMedia, {
+	genre: genreParam || null,
+	minRating,
+	sort: recSort,
+});
+
+const allTrips = showTravel
+	? await listPublishedTrips(env.DB)
+	: !activeType
+		? genreParam || minRating != null
+			? []
+			: await listPublishedTrips(env.DB)
+		: [];
+
 const countries = showTravel ? await listCountriesFromPublishedStops(env.DB) : [];
+const countryFilterValid =
+	showTravel && countryParam.length === 2 && countries.some((c) => c.country_code === countryParam);
+
+let rawTrips = allTrips;
+if (showTravel && countryFilterValid) {
+	const tripIds = await listPublishedTripIdsForCountry(env.DB, countryParam);
+	rawTrips = allTrips.filter((trip) => tripIds.has(trip.id));
+}
+
+const trips = sortTrips(rawTrips, showTravel || !activeType ? tripSort : 'newest');
 
 const tripCards = await Promise.all(
 	trips.map(async (trip) => ({
@@ -28,27 +68,37 @@ const tripCards = await Promise.all(
 	})),
 );
 
+function hrefForType(type: string | null) {
+	return type ? `/recommendations?type=${type}` : '/recommendations';
+}
+
 const tabs = [
-	{ label: 'All', href: '/recommendations', current: !typeParam },
-	{ label: 'Movies', href: '/recommendations?type=movie', current: activeType === 'movie' },
-	{ label: 'Books', href: '/recommendations?type=book', current: activeType === 'book' },
-	{ label: 'Travel', href: '/recommendations?type=travel', current: showTravel },
+	{ label: 'All', href: hrefForType(null), current: !typeParam },
+	{ label: 'Movies', href: hrefForType('movie'), current: activeType === 'movie' },
+	{ label: 'Books', href: hrefForType('book'), current: activeType === 'book' },
+	{ label: 'Travel', href: hrefForType('travel'), current: showTravel },
 ];
 
-const empty =
-	!showTravel && mediaItems.length === 0 && tripCards.length === 0;
+const empty = showTravel
+	? tripCards.length === 0
+	: mediaItems.length === 0 && tripCards.length === 0;
+
+const showMediaToolbar = !showTravel && allMedia.length > 0;
+const showTravelToolbar = showTravel && allTrips.length > 0;
+
+const coverSources = new Set(
+	mediaItems
+		.map((item) => coverSourceFromUrl(item.image_url))
+		.filter((source): source is 'tmdb' | 'openlibrary' => source != null),
+);
+const showTmdbCredit = coverSources.has('tmdb');
+const showOpenLibraryCredit = coverSources.has('openlibrary');
 ---
 
 <BaseLayout title="Recommendations" description="Movie, book, and travel recommendations.">
 	<header class="section-head">
-		<h1>{showTravel ? 'Travel' : 'Recommendations'}</h1>
-		<p>
-			{
-				showTravel
-					? 'Countries from your trip stops on the planisphere, then individual trips.'
-					: 'Newest first. Filter by type, or browse everything.'
-			}
-		</p>
+		<h1>Recommendations</h1>
+		<p>Filter by type, or browse everything.</p>
 	</header>
 
 	<nav class="tabs" aria-label="Recommendation types">
@@ -61,36 +111,160 @@ const empty =
 		}
 	</nav>
 
+	{
+		showMediaToolbar && (
+			<form class="rec-toolbar" method="get" id="rec-toolbar">
+				{activeType && <input type="hidden" name="type" value={activeType} />}
+				<label class="rec-toolbar__field">
+					<span>Genre</span>
+					<select name="genre">
+						<option value="">All genres</option>
+						{genres.map((genre) => (
+							<option value={genre} selected={genreParam === genre}>
+								{genre}
+							</option>
+						))}
+					</select>
+				</label>
+				<label class="rec-toolbar__field">
+					<span>Min rating</span>
+					<select name="min_rating">
+						<option value="" selected={minRating == null}>
+							Any
+						</option>
+						{[3, 3.5, 4, 4.5, 5].map((value) => (
+							<option value={String(value)} selected={minRating === value}>
+								{value}+
+							</option>
+						))}
+					</select>
+				</label>
+				<label class="rec-toolbar__field">
+					<span>Sort</span>
+					<select name="sort">
+						<option value="newest" selected={recSort === 'newest'}>
+							Newest first
+						</option>
+						<option value="oldest" selected={recSort === 'oldest'}>
+							Oldest first
+						</option>
+						<option value="rating-desc" selected={recSort === 'rating-desc'}>
+							Highest rated
+						</option>
+						<option value="rating-asc" selected={recSort === 'rating-asc'}>
+							Lowest rated
+						</option>
+						<option value="title-asc" selected={recSort === 'title-asc'}>
+							Title A–Z
+						</option>
+						<option value="title-desc" selected={recSort === 'title-desc'}>
+							Title Z–A
+						</option>
+					</select>
+				</label>
+			</form>
+		)
+	}
+
+	{
+		showTravelToolbar && (
+			<form class="rec-toolbar" method="get" id="rec-toolbar">
+				<input type="hidden" name="type" value="travel" />
+				<label class="rec-toolbar__field">
+					<span>Country</span>
+					<select name="country">
+						<option value="">All countries</option>
+						{countries.map((country) => (
+							<option
+								value={country.country_code}
+								selected={countryFilterValid && countryParam === country.country_code}
+							>
+								{country.name}
+							</option>
+						))}
+					</select>
+				</label>
+				<label class="rec-toolbar__field">
+					<span>Sort</span>
+					<select name="sort">
+						<option value="newest" selected={tripSort === 'newest'}>
+							Newest first
+						</option>
+						<option value="oldest" selected={tripSort === 'oldest'}>
+							Oldest first
+						</option>
+						<option value="title-asc" selected={tripSort === 'title-asc'}>
+							Title A–Z
+						</option>
+						<option value="title-desc" selected={tripSort === 'title-desc'}>
+							Title Z–A
+						</option>
+					</select>
+				</label>
+			</form>
+		)
+	}
+
 	{showTravel && <Planisphere countries={countries} />}
 
 	{
-		showTravel ? (
+		empty ? (
+			<p class="empty">Nothing published here yet. Check back soon.</p>
+		) : showTravel ? (
 			<section class="travel-trips">
 				<header class="section-head section-head--compact">
 					<h2>Trips</h2>
 					<p>Open a trip for its map and itinerary.</p>
 				</header>
-				{tripCards.length === 0 ? (
-					<p class="empty">No trips published yet.</p>
-				) : (
-					<div class="rec-list">
-						{tripCards.map(({ trip, stopCount }) => (
-							<TripCard trip={trip} stopCount={stopCount} />
-						))}
-					</div>
-				)}
+				<div class="rec-list">
+					{tripCards.map(({ trip, stopCount }) => (
+						<TripCard trip={trip} stopCount={stopCount} />
+					))}
+				</div>
 			</section>
-		) : empty ? (
-			<p class="empty">Nothing published here yet. Check back soon.</p>
 		) : (
-			<div class="rec-list">
-				{mediaItems.map((item) => (
-					<RecCard item={item} />
-				))}
-				{tripCards.map(({ trip, stopCount }) => (
-					<TripCard trip={trip} stopCount={stopCount} />
-				))}
-			</div>
+			<>
+				<div class="rec-list">
+					{mediaItems.map((item) => (
+						<RecCard item={item} />
+					))}
+					{tripCards.map(({ trip, stopCount }) => (
+						<TripCard trip={trip} stopCount={stopCount} />
+					))}
+				</div>
+				{(showTmdbCredit || showOpenLibraryCredit) && (
+					<p class="rec-attribution">
+						{showTmdbCredit && (
+							<>
+								Movie posters courtesy of{' '}
+								<a href="https://www.themoviedb.org/" rel="noopener noreferrer" target="_blank">
+									TMDB
+								</a>
+								. This product uses the TMDB API but is not endorsed or certified by TMDB.
+								{showOpenLibraryCredit ? ' ' : ''}
+							</>
+						)}
+						{showOpenLibraryCredit && (
+							<>
+								Book covers from{' '}
+								<a href="https://openlibrary.org/" rel="noopener noreferrer" target="_blank">
+									Open Library
+								</a>
+								.
+							</>
+						)}
+					</p>
+				)}
+			</>
 		)
 	}
 </BaseLayout>
+
+<script>
+	const form = document.getElementById('rec-toolbar');
+	form?.querySelectorAll('select').forEach((select) => {
+		select.addEventListener('change', () => {
+			if (form instanceof HTMLFormElement) form.requestSubmit();
+		});
+	});
+</script>

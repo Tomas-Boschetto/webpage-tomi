@@ -6,12 +6,18 @@ import { isAdminAuthorized } from '../../lib/auth';
 export const prerender = false;
 
 const authorized = isAdminAuthorized(Astro.request, env);
+const viewParam = Astro.url.searchParams.get('view');
+const view = viewParam === 'books' ? 'books' : 'movies';
 ---
 
 <BaseLayout title="Admin" description="Manage movie and book recommendations.">
 	<header class="section-head">
 		<h1>Admin</h1>
-		<p>Manage movies and books here. Use the Trips tab for travel itineraries.</p>
+		<p>
+			{view === 'books'
+				? 'Manage books here. Switch tabs for movies or travel trips.'
+				: 'Manage movies here. Switch tabs for books or travel trips.'}
+		</p>
 	</header>
 
 	{
@@ -23,115 +29,44 @@ const authorized = isAdminAuthorized(Astro.request, env);
 		) : (
 			<>
 				<nav class="tabs" aria-label="Admin sections">
-					<a href="/admin" aria-current="true">Movies & books</a>
+					<a href="/admin?view=movies" aria-current={view === 'movies' ? 'page' : undefined}
+						>Movies</a
+					>
+					<a href="/admin?view=books" aria-current={view === 'books' ? 'page' : undefined}>Books</a>
 					<a href="/admin/trips">Trips</a>
 				</nav>
 
-				<div class="admin-layout" id="admin-app">
-					<section class="admin-panel">
-						<h2 id="form-heading">New recommendation</h2>
-						<form class="form" id="admin-form">
-							<input type="hidden" name="id" id="field-id" value="" />
-							<label>
-								Type
-								<select name="type" id="field-type" required>
-									<option value="movie">Movie</option>
-									<option value="book">Book</option>
-								</select>
-							</label>
-							<label>
-								Title
-								<input type="text" name="title" id="field-title" required maxlength="200" />
-							</label>
-							<label>
-								Summary
-								<textarea name="summary" id="field-summary" required maxlength="2000" />
-							</label>
-							<label>
-								<span id="experienced-label-text">Date watched</span>
-								<input type="date" name="experienced_at" id="field-experienced" required />
-							</label>
-							<label>
-								Rating (0–5)
-								<input
-									type="number"
-									name="rating"
-									id="field-rating"
-									min="0"
-									max="5"
-									step="0.5"
-									placeholder="4.5"
-								/>
-							</label>
-							<label>
-								Genre
-								<input type="text" name="genre" id="field-genre" maxlength="500" />
-							</label>
-							<label>
-								<span id="director-label-text">Director</span>
-								<input type="text" name="director" id="field-director" maxlength="500" />
-							</label>
-							<label id="cast-row">
-								Cast
-								<input
-									type="text"
-									name="cast"
-									id="field-cast"
-									maxlength="500"
-									placeholder="Comma-separated names"
-								/>
-							</label>
-							<label id="imdb-row">
-								IMDb link
-								<input
-									type="url"
-									name="imdb_url"
-									id="field-imdb"
-									maxlength="500"
-									placeholder="https://www.imdb.com/title/…"
-								/>
-							</label>
-							<label id="goodreads-row" hidden>
-								Goodreads link
-								<input
-									type="url"
-									name="goodreads_url"
-									id="field-goodreads"
-									maxlength="500"
-									placeholder="https://www.goodreads.com/book/show/…"
-								/>
-							</label>
-							<label>
-								Other URL (optional)
-								<input type="url" name="url" id="field-url" maxlength="500" placeholder="https://" />
-							</label>
-							<label>
-								Image URL (optional)
-								<input
-									type="url"
-									name="image_url"
-									id="field-image"
-									maxlength="500"
-									placeholder="https://"
-								/>
-							</label>
-							<label class="checkbox-row">
-								<input type="checkbox" name="published" id="field-published" checked />
-								Published
-							</label>
-							<div class="form__actions">
-								<button class="btn btn--primary" type="submit">Save</button>
-								<button class="btn btn--ghost" type="button" id="reset-btn">Clear</button>
-								<p class="form__status" id="admin-status" role="status" aria-live="polite" />
-							</div>
-						</form>
-					</section>
+				<div
+					class="admin-layout admin-layout--stack"
+					id="admin-app"
+					data-view={view}
+				>
+					{
+						view === 'movies' ? (
+							<section class="admin-panel">
+								<h2>Movies</h2>
+								<div class="admin-list" id="movies-list">
+									<p class="empty">Loading…</p>
+								</div>
+							</section>
+						) : (
+							<section class="admin-panel">
+								<h2>Books</h2>
+								<div class="admin-list" id="books-list">
+									<p class="empty">Loading…</p>
+								</div>
+							</section>
+						)
+					}
 
-					<section class="admin-panel">
-						<h2>All movies & books</h2>
-						<div class="admin-list" id="admin-list">
-							<p class="empty">Loading…</p>
+					<section class="admin-add">
+						<button class="btn btn--primary" type="button" id="add-toggle">
+							{view === 'books' ? 'Add book' : 'Add movie'}
+						</button>
+						<div class="admin-expand" id="add-panel" hidden>
+							<div id="add-form-host"></div>
 						</div>
+						<p class="form__status" id="admin-status" role="status" aria-live="polite"></p>
 					</section>
 				</div>
 			</>
@@ -142,114 +77,324 @@ const authorized = isAdminAuthorized(Astro.request, env);
 {
 	authorized && (
 		<script>
-			const form = document.getElementById('admin-form');
-			const listEl = document.getElementById('admin-list');
+			const app = document.getElementById('admin-app');
+			const view = app?.dataset.view === 'books' ? 'books' : 'movies';
+			const type = view === 'books' ? 'book' : 'movie';
+			const listEl = document.getElementById(view === 'books' ? 'books-list' : 'movies-list');
 			const statusEl = document.getElementById('admin-status');
-			const heading = document.getElementById('form-heading');
-			const idField = document.getElementById('field-id');
-			const typeField = document.getElementById('field-type');
-			const titleField = document.getElementById('field-title');
-			const summaryField = document.getElementById('field-summary');
-			const ratingField = document.getElementById('field-rating');
-			const genreField = document.getElementById('field-genre');
-			const directorField = document.getElementById('field-director');
-			const directorLabel = document.getElementById('director-label-text');
-			const experiencedLabel = document.getElementById('experienced-label-text');
-			const experiencedField = document.getElementById('field-experienced');
-			const castRow = document.getElementById('cast-row');
-			const castField = document.getElementById('field-cast');
-			const imdbRow = document.getElementById('imdb-row');
-			const imdbField = document.getElementById('field-imdb');
-			const goodreadsRow = document.getElementById('goodreads-row');
-			const goodreadsField = document.getElementById('field-goodreads');
-			const urlField = document.getElementById('field-url');
-			const imageField = document.getElementById('field-image');
-			const publishedField = document.getElementById('field-published');
+			const addToggle = document.getElementById('add-toggle');
+			const addPanel = document.getElementById('add-panel');
+			const addFormHost = document.getElementById('add-form-host');
 
-			function syncTypeFields() {
-				const isBook = typeField.value === 'book';
-				directorLabel.textContent = isBook ? 'Author' : 'Director';
-				experiencedLabel.textContent = isBook ? 'Date read' : 'Date watched';
-				castRow.hidden = isBook;
-				imdbRow.hidden = isBook;
-				goodreadsRow.hidden = !isBook;
-			}
+			/** @type {any[]} */
+			let itemsCache = [];
 
 			function setStatus(message, ok = true) {
 				statusEl.className = `form__status ${ok ? 'form__status--ok' : 'form__status--err'}`;
 				statusEl.textContent = message;
 			}
 
-			function resetForm() {
-				form.reset();
-				idField.value = '';
-				publishedField.checked = true;
-				heading.textContent = 'New recommendation';
-				syncTypeFields();
-			}
-
 			function escapeHtml(value) {
-				return value
+				return String(value)
 					.replaceAll('&', '&amp;')
 					.replaceAll('<', '&lt;')
 					.replaceAll('>', '&gt;')
 					.replaceAll('"', '&quot;');
 			}
 
-			function fillForm(item) {
-				idField.value = item.id;
-				typeField.value = item.type;
-				titleField.value = item.title;
-				summaryField.value = item.summary;
-				ratingField.value = item.rating != null ? String(item.rating) : '';
-				experiencedField.value = (item.experienced_at || '').slice(0, 10);
-				genreField.value = item.genre || '';
-				directorField.value = item.director || '';
-				castField.value = item.cast_members || '';
-				imdbField.value = item.imdb_url || '';
-				goodreadsField.value = item.goodreads_url || '';
-				urlField.value = item.url || '';
-				imageField.value = item.image_url || '';
-				publishedField.checked = item.published === 1;
-				heading.textContent = 'Edit recommendation';
-				syncTypeFields();
-				window.scrollTo({ top: 0, behavior: 'smooth' });
+			function closeAllEditors() {
+				document.querySelectorAll('.admin-row__editor').forEach((el) => {
+					el.hidden = true;
+					el.innerHTML = '';
+				});
+				document.querySelectorAll('.admin-row-block.is-editing').forEach((el) => {
+					el.classList.remove('is-editing');
+				});
 			}
 
-			async function loadList() {
-				const res = await fetch('/api/admin/recommendations');
-				if (!res.ok) {
-					listEl.innerHTML = '<p class="form__status form__status--err">Failed to load entries.</p>';
-					return;
+			function closeAddPanel() {
+				addPanel.hidden = true;
+				addFormHost.innerHTML = '';
+				addToggle.setAttribute('aria-expanded', 'false');
+			}
+
+			/**
+			 * @param {'movie' | 'book'} formType
+			 * @param {any | null} item
+			 * @param {'create' | 'edit'} mode
+			 */
+			function buildFormHtml(formType, item, mode) {
+				const isBook = formType === 'book';
+				const id = item?.id || '';
+				const title = escapeHtml(item?.title || '');
+				const summary = escapeHtml(item?.summary || '');
+				const experienced = escapeHtml((item?.experienced_at || '').slice(0, 10));
+				const rating = item?.rating != null ? String(item.rating) : '';
+				const genre = escapeHtml(item?.genre || '');
+				const director = escapeHtml(item?.director || '');
+				const cast = escapeHtml(item?.cast_members || '');
+				const imdb = escapeHtml(item?.imdb_url || '');
+				const goodreads = escapeHtml(item?.goodreads_url || '');
+				const url = escapeHtml(item?.url || '');
+				const image = escapeHtml(item?.image_url || '');
+				const published = !item || item.published === 1;
+
+				return `
+					<form class="form admin-entry-form" data-mode="${mode}" data-type="${formType}">
+						<input type="hidden" name="id" value="${id}" />
+						<input type="hidden" name="type" value="${formType}" />
+						<label>
+							Title
+							<input type="text" name="title" required maxlength="200" value="${title}" />
+						</label>
+						<label>
+							Summary
+							<textarea name="summary" required maxlength="2000">${summary}</textarea>
+						</label>
+						<label>
+							${isBook ? 'Date read' : 'Date watched'}
+							<input type="date" name="experienced_at" required value="${experienced}" />
+						</label>
+						<label>
+							Rating (0–5)
+							<input type="number" name="rating" min="0" max="5" step="0.5" placeholder="4.5" value="${rating}" />
+						</label>
+						<label>
+							Genre
+							<input type="text" name="genre" maxlength="500" value="${genre}" />
+						</label>
+						<label>
+							${isBook ? 'Author' : 'Director'}
+							<input type="text" name="director" maxlength="500" value="${director}" />
+						</label>
+						${
+							isBook
+								? `
+						<label>
+							Goodreads link
+							<input type="url" name="goodreads_url" maxlength="500" placeholder="https://www.goodreads.com/book/show/…" value="${goodreads}" />
+						</label>`
+								: `
+						<label>
+							Cast
+							<input type="text" name="cast" maxlength="500" placeholder="Comma-separated names" value="${cast}" />
+						</label>
+						<label>
+							IMDb link
+							<input type="url" name="imdb_url" maxlength="500" placeholder="https://www.imdb.com/title/…" value="${imdb}" />
+						</label>`
+						}
+						<label>
+							Other URL (optional)
+							<input type="url" name="url" maxlength="500" placeholder="https://" value="${url}" />
+						</label>
+						<div class="admin-cover">
+							<label>
+								Cover image URL (optional)
+								<input type="url" name="image_url" maxlength="500" placeholder="https://" value="${image}" data-cover-url />
+							</label>
+							<div class="form__actions admin-cover__actions">
+								<button class="btn btn--ghost" type="button" data-action="fetch-cover">
+									${isBook ? 'Fetch cover (Open Library)' : 'Fetch poster (TMDB)'}
+								</button>
+							</div>
+							<img
+								class="admin-cover__preview"
+								data-cover-preview
+								src="${image || ''}"
+								alt=""
+								width="120"
+								height="180"
+								${image ? '' : 'hidden'}
+							/>
+							<p class="admin-cover__hint">
+								${
+									isBook
+										? 'Looks up a cover on Open Library from the title (and author if set).'
+										: 'Looks up a poster on TMDB from the title (uses year from the date watched when set).'
+								}
+							</p>
+							<p class="form__status" data-cover-status role="status" aria-live="polite"></p>
+						</div>
+						<label class="checkbox-row">
+							<input type="checkbox" name="published" ${published ? 'checked' : ''} />
+							Published
+						</label>
+						<div class="form__actions">
+							<button class="btn btn--primary" type="submit">${mode === 'edit' ? 'Save changes' : 'Create'}</button>
+							<button class="btn btn--ghost" type="button" data-action="cancel">Cancel</button>
+						</div>
+					</form>
+				`;
+			}
+
+			/**
+			 * @param {HTMLFormElement} form
+			 */
+			function payloadFromForm(form) {
+				const data = new FormData(form);
+				const formType = String(data.get('type') || '');
+				const isBook = formType === 'book';
+				const ratingRaw = String(data.get('rating') || '').trim();
+				return {
+					type: formType,
+					title: String(data.get('title') || ''),
+					summary: String(data.get('summary') || ''),
+					experienced_at: String(data.get('experienced_at') || ''),
+					rating: ratingRaw === '' ? null : Number(ratingRaw),
+					genre: String(data.get('genre') || '') || null,
+					director: String(data.get('director') || '') || null,
+					cast_members: isBook ? null : String(data.get('cast') || '') || null,
+					imdb_url: isBook ? null : String(data.get('imdb_url') || '') || null,
+					goodreads_url: isBook ? String(data.get('goodreads_url') || '') || null : null,
+					url: String(data.get('url') || '') || null,
+					image_url: String(data.get('image_url') || '') || null,
+					published: form.querySelector('[name="published"]')?.checked === true,
+				};
+			}
+
+			/**
+			 * @param {HTMLElement} host
+			 * @param {'movie' | 'book'} formType
+			 * @param {any | null} item
+			 * @param {'create' | 'edit'} mode
+			 * @param {() => void} onCancel
+			 */
+			function mountForm(host, formType, item, mode, onCancel) {
+				host.innerHTML = buildFormHtml(formType, item, mode);
+				const form = host.querySelector('form');
+				const coverInput = form?.querySelector('[data-cover-url]');
+				const coverPreview = form?.querySelector('[data-cover-preview]');
+				const coverStatus = form?.querySelector('[data-cover-status]');
+
+				function setCoverStatus(message, ok = true) {
+					if (!coverStatus) return;
+					coverStatus.className = `form__status ${ok ? 'form__status--ok' : 'form__status--err'}`;
+					coverStatus.textContent = message;
 				}
-				const items = await res.json();
-				if (!items.length) {
-					listEl.innerHTML = '<p class="empty">No recommendations yet.</p>';
+
+				function syncCoverPreview(url) {
+					if (!(coverPreview instanceof HTMLImageElement)) return;
+					const next = String(url || '').trim();
+					if (!next) {
+						coverPreview.hidden = true;
+						coverPreview.removeAttribute('src');
+						return;
+					}
+					coverPreview.hidden = false;
+					coverPreview.src = next;
+				}
+
+				coverInput?.addEventListener('input', () => {
+					syncCoverPreview(coverInput instanceof HTMLInputElement ? coverInput.value : '');
+				});
+
+				form?.querySelector('[data-action="fetch-cover"]')?.addEventListener('click', async () => {
+					if (!(form instanceof HTMLFormElement)) return;
+					const data = new FormData(form);
+					setCoverStatus('Looking up cover…');
+					const res = await fetch('/api/admin/covers', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							type: formType,
+							title: String(data.get('title') || ''),
+							creator: String(data.get('director') || ''),
+							year: String(data.get('experienced_at') || '').slice(0, 4),
+						}),
+					});
+					const json = await res.json();
+					if (!res.ok) {
+						setCoverStatus(json.error || 'Cover lookup failed.', false);
+						return;
+					}
+					if (coverInput instanceof HTMLInputElement) {
+						coverInput.value = json.image_url;
+					}
+					syncCoverPreview(json.image_url);
+					setCoverStatus(
+						`Matched “${json.matched_title}”. Save the entry to keep this cover.`,
+					);
+				});
+
+				form?.querySelector('[data-action="cancel"]')?.addEventListener('click', onCancel);
+				form?.addEventListener('submit', async (event) => {
+					event.preventDefault();
+					const editingId = String(new FormData(form).get('id') || '');
+					const payload = payloadFromForm(form);
+					const res = await fetch(
+						editingId ? `/api/admin/recommendations/${editingId}` : '/api/admin/recommendations',
+						{
+							method: editingId ? 'PUT' : 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify(payload),
+						},
+					);
+					const json = await res.json();
+					if (!res.ok) {
+						setStatus(json.error || 'Save failed.', false);
+						return;
+					}
+					setStatus(editingId ? 'Updated.' : 'Created.');
+					onCancel();
+					await loadList();
+				});
+			}
+
+			/**
+			 * @param {any[]} items
+			 * @param {'movie' | 'book'} formType
+			 * @param {HTMLElement} target
+			 */
+			function renderList(items, formType, target) {
+				const filtered = items.filter((item) => item.type === formType);
+				if (!filtered.length) {
+					target.innerHTML = `<p class="empty">No ${formType === 'movie' ? 'movies' : 'books'} yet.</p>`;
 					return;
 				}
 
-				listEl.innerHTML = items
+				target.innerHTML = filtered
 					.map(
 						(item) => `
-					<div class="admin-row" data-id="${item.id}">
-						<div class="admin-row__title">${escapeHtml(item.title)}</div>
-						<div class="admin-row__meta">
-							${item.type}${item.experienced_at ? ` · ${item.experienced_at}` : ''}${item.rating != null ? ` · ${item.rating}/5` : ''}${item.genre ? ` · ${escapeHtml(item.genre)}` : ''}
-							· ${item.published ? 'published' : '<span class="badge badge--draft">draft</span>'}
+					<div class="admin-row-block" data-id="${escapeHtml(item.id)}">
+						<div class="admin-row">
+							<div class="admin-row__title">${escapeHtml(item.title)}</div>
+							<div class="admin-row__meta">
+								${item.experienced_at ? `${escapeHtml(String(item.experienced_at).slice(0, 10))}` : 'No date'}
+								${item.rating != null ? ` · ${item.rating}/5` : ''}
+								${item.genre ? ` · ${escapeHtml(item.genre)}` : ''}
+								· ${item.published ? 'published' : '<span class="badge badge--draft">draft</span>'}
+							</div>
+							<div class="admin-row__actions">
+								<button class="btn btn--ghost" type="button" data-action="edit">Edit</button>
+								<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
+							</div>
 						</div>
-						<div class="admin-row__actions">
-							<button class="btn btn--ghost" type="button" data-action="edit">Edit</button>
-							<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
-						</div>
+						<div class="admin-row__editor admin-expand" hidden></div>
 					</div>`,
 					)
 					.join('');
 
-				listEl.querySelectorAll('.admin-row').forEach((row) => {
-					const id = row.dataset.id;
-					const item = items.find((r) => r.id === id);
-					row.querySelector('[data-action="edit"]').addEventListener('click', () => fillForm(item));
-					row.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+				target.querySelectorAll('.admin-row-block').forEach((block) => {
+					const id = block.dataset.id;
+					const item = itemsCache.find((r) => r.id === id);
+					if (!item) return;
+
+					block.querySelector('[data-action="edit"]')?.addEventListener('click', () => {
+						closeAddPanel();
+						const already = block.classList.contains('is-editing');
+						closeAllEditors();
+						if (already) return;
+						block.classList.add('is-editing');
+						const editor = block.querySelector('.admin-row__editor');
+						if (!editor) return;
+						editor.hidden = false;
+						mountForm(editor, formType, item, 'edit', () => {
+							closeAllEditors();
+						});
+					});
+
+					block.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
 						if (!confirm(`Delete “${item.title}”?`)) return;
 						const del = await fetch(`/api/admin/recommendations/${id}`, { method: 'DELETE' });
 						if (!del.ok) {
@@ -257,61 +402,38 @@ const authorized = isAdminAuthorized(Astro.request, env);
 							return;
 						}
 						setStatus('Deleted.');
-						if (idField.value === id) resetForm();
+						closeAllEditors();
+						closeAddPanel();
 						await loadList();
 					});
 				});
 			}
 
-			typeField.addEventListener('change', syncTypeFields);
-
-			form.addEventListener('submit', async (event) => {
-				event.preventDefault();
-				const ratingRaw = ratingField.value.trim();
-				const isBook = typeField.value === 'book';
-				const payload = {
-					type: typeField.value,
-					title: titleField.value,
-					summary: summaryField.value,
-					experienced_at: experiencedField.value,
-					rating: ratingRaw === '' ? null : Number(ratingRaw),
-					genre: genreField.value || null,
-					director: directorField.value || null,
-					cast_members: isBook ? null : castField.value || null,
-					imdb_url: isBook ? null : imdbField.value || null,
-					goodreads_url: isBook ? goodreadsField.value || null : null,
-					url: urlField.value || null,
-					image_url: imageField.value || null,
-					published: publishedField.checked,
-				};
-
-				const editingId = idField.value;
-				const res = await fetch(
-					editingId ? `/api/admin/recommendations/${editingId}` : '/api/admin/recommendations',
-					{
-						method: editingId ? 'PUT' : 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(payload),
-					},
-				);
-
-				const json = await res.json();
+			async function loadList() {
+				if (!listEl) return;
+				const res = await fetch('/api/admin/recommendations');
 				if (!res.ok) {
-					setStatus(json.error || 'Save failed.', false);
+					listEl.innerHTML = '<p class="form__status form__status--err">Failed to load entries.</p>';
 					return;
 				}
+				itemsCache = await res.json();
+				renderList(itemsCache, type, listEl);
+			}
 
-				setStatus(editingId ? 'Updated.' : 'Created.');
-				resetForm();
-				await loadList();
-			});
-
-			document.getElementById('reset-btn').addEventListener('click', () => {
-				resetForm();
+			addToggle?.addEventListener('click', () => {
+				closeAllEditors();
+				if (!addPanel.hidden) {
+					closeAddPanel();
+					return;
+				}
+				addPanel.hidden = false;
+				addToggle.setAttribute('aria-expanded', 'true');
 				setStatus('');
+				mountForm(addFormHost, type, null, 'create', () => {
+					closeAddPanel();
+				});
 			});
 
-			syncTypeFields();
 			loadList();
 		</script>
 	)

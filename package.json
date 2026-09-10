@@ -13,7 +13,8 @@
     "generate-types": "wrangler types",
     "db:migrate:local": "wrangler d1 migrations apply recs-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply recs-db --remote",
-    "deploy": "astro build && wrangler deploy"
+    "deploy": "astro build && wrangler deploy",
+    "map:build": "node scripts/build-world-svg.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.1",

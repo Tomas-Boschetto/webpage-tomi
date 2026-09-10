@@ -29,8 +29,9 @@ Open:
 ## Content workflow
 
 1. Open `/admin` for movies & books, or `/admin/trips` for travel (Cloudflare Access in production)
-2. For a trip: create it, then **Manage stops** — each stop needs a country (feeds the planisphere), visit time, and optional map coordinates
-3. Published items appear on `/recommendations` (and `/trips/[id]` with maps) immediately — no redeploy
+2. For movies/books: use **Fetch poster (TMDB)** / **Fetch cover (Open Library)** to fill the image URL (set `TMDB_API_KEY` for movies)
+3. For a trip: create it, then **Manage stops** — each stop needs a country (feeds the planisphere), visit time, and optional map coordinates
+4. Published items appear on `/recommendations` (and `/trips/[id]` with maps) immediately — no redeploy
 
 ## Deploy & Cloudflare dashboard
 
@@ -49,4 +50,5 @@ Secrets (`.dev.vars` locally, Cloudflare dashboard in production — never commi
 - `ADMIN_DEV_BYPASS` — local only; never set `true` in production
 - `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`
 - `RESEND_API_KEY` / `CONTACT_FROM_EMAIL`
+- `TMDB_API_KEY` — movie poster lookup in admin (books use Open Library, no key)
 

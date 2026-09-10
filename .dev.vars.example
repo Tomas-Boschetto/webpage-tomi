@@ -12,3 +12,6 @@ RESEND_API_KEY=
 CONTACT_FROM_EMAIL=onboarding@resend.dev
 # Keep your real inbox here locally — never commit .dev.vars
 CONTACT_TO_EMAIL=
+
+# TMDB (movies cover lookup in /admin — free key at https://www.themoviedb.org/settings/api)
+TMDB_API_KEY=

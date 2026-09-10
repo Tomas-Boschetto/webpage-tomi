@@ -1,4 +1,6 @@
 ---
+import worldSvg from '../assets/maps/world.svg?raw';
+
 interface Country {
 	country_code: string;
 	name: string;
@@ -7,110 +9,84 @@ interface Country {
 
 interface Props {
 	countries: Country[];
+	title?: string;
+	lead?: string;
+	id?: string;
 }
 
-const { countries } = Astro.props;
-const codes = countries.map((c) => c.country_code.toUpperCase());
+const {
+	countries,
+	title = "Where I've been",
+	lead,
+	id,
+} = Astro.props;
+const codes = new Set(countries.map((c) => c.country_code.toUpperCase()));
+const nameByCode = new Map(countries.map((c) => [c.country_code.toUpperCase(), c.name]));
+
+const resolvedLead =
+	lead ??
+	(countries.length === 0
+		? 'Countries appear here from published trip stops.'
+		: `${countries.length} ${countries.length === 1 ? 'country' : 'countries'} from my itinerary stops.`);
+
+function escapeXml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+}
+
+function flagUrl(code: string): string {
+	return `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
+}
+
+/** Mark visited countries and attach titles for hover. */
+function highlightWorld(svg: string, visited: Set<string>): string {
+	return svg.replace(
+		/<path(\s+id="([A-Z]{2})")([^>]*?)\s*\/>/g,
+		(full, idAttr: string, code: string, rest: string) => {
+			if (!visited.has(code)) return full;
+			const label = escapeXml(nameByCode.get(code) || code);
+			const attrs = rest.replace(/\sclass="[^"]*"/, '');
+			return `<path${idAttr} class="country is-visited"${attrs}><title>${label} (visited)</title></path>`;
+		},
+	);
+}
+
+const mapHtml = highlightWorld(worldSvg, codes);
 ---
 
-<section class="planisphere" aria-label="Countries visited">
+<section class="planisphere" aria-label="Countries visited" id={id}>
 	<header class="planisphere__head">
-		<h2 class="planisphere__title">Where I've been</h2>
-		<p class="planisphere__lead">
-			{countries.length === 0
-				? 'Countries appear here from trip stops you publish.'
-				: `${countries.length} ${countries.length === 1 ? 'country' : 'countries'} from your itinerary stops.`}
-		</p>
+		<h2 class="planisphere__title">{title}</h2>
+		<p class="planisphere__lead" data-planisphere-lead>{resolvedLead}</p>
 	</header>
 	<div
 		class="planisphere__map"
-		id="planisphere-map"
-		data-countries={JSON.stringify(codes)}
 		role="img"
 		aria-label="World map of visited countries"
-	>
-	</div>
-	{
-		countries.length > 0 && (
-			<ul class="planisphere__legend">
-				{countries.map((c) => (
-					<li>
-						<span class="planisphere__swatch" aria-hidden="true" />
-						<strong>{c.name}</strong>
-						<span class="planisphere__note"> ({c.country_code})</span>
-					</li>
-				))}
-			</ul>
-		)
-	}
+		data-planisphere-map
+		set:html={mapHtml}
+	/>
+	<p class="planisphere__credit">Custom SVG planisphere · boundaries from Natural Earth</p>
+	<ul class="planisphere__legend" data-planisphere-legend>
+		{
+			countries.map((c) => (
+				<li>
+					<img
+						class="planisphere__flag"
+						src={flagUrl(c.country_code)}
+						alt=""
+						width="20"
+						height="15"
+						loading="lazy"
+						decoding="async"
+					/>
+					<strong>{c.name}</strong>
+					<span class="planisphere__note"> ({c.country_code})</span>
+				</li>
+			))
+		}
+	</ul>
 </section>
-
-<link
-	rel="stylesheet"
-	href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-	crossorigin=""
-/>
-<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script is:inline>
-	(function () {
-		var root = document.getElementById('planisphere-map');
-		if (!root || !window.L) return;
-
-		var visited = new Set(JSON.parse(root.getAttribute('data-countries') || '[]'));
-		// Choropleth only (no basemap tiles).
-		var map = window.L.map(root, {
-			scrollWheelZoom: false,
-			worldCopyJump: true,
-			minZoom: 1,
-			maxZoom: 6,
-			attributionControl: true,
-		}).setView([20, 0], 2);
-
-		window.L.control
-			.attribution({ prefix: false })
-			.addAttribution('Boundaries © Natural Earth')
-			.addTo(map);
-
-		var baseStyle = {
-			fillColor: '#1a2e28',
-			weight: 0.6,
-			opacity: 1,
-			color: 'rgba(244,240,230,0.18)',
-			fillOpacity: 1,
-		};
-		var visitedStyle = {
-			fillColor: '#d9773a',
-			weight: 1,
-			opacity: 1,
-			color: '#e8a574',
-			fillOpacity: 1,
-		};
-
-		fetch(
-			'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@v5.1.1/geojson/ne_110m_admin_0_countries.geojson',
-		)
-			.then(function (r) {
-				return r.json();
-			})
-			.then(function (ne) {
-				window.L.geoJSON(ne, {
-					style: function (feature) {
-						var code = String((feature.properties && feature.properties.ISO_A2) || '').toUpperCase();
-						return visited.has(code) ? visitedStyle : baseStyle;
-					},
-					onEachFeature: function (feature, layer) {
-						var props = feature.properties || {};
-						var code = String(props.ISO_A2 || '').toUpperCase();
-						var name = props.NAME || props.ADMIN || code;
-						if (visited.has(code)) {
-							layer.bindTooltip(name + ' — visited', { sticky: true });
-						}
-					},
-				}).addTo(map);
-			})
-			.catch(function () {
-				root.innerHTML =
-					'<p class="empty">World map could not load. Check your network and refresh.</p>';
-			});
-	})();
-</script>

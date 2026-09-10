@@ -1,0 +1,12 @@
+---
+description: User makes all git commits; agent must not commit
+alwaysApply: true
+---
+
+# Git commits
+
+- **Never** create git commits. The user commits and signs everything themselves.
+- Do not run `git commit`, `git commit --amend`, or bypass signing.
+- After making code changes, summarize what changed and give the user the exact `git add` / `git commit` / `git push` commands if helpful.
+- Do not push to remote unless the user explicitly asks **and** the commits already exist (created by the user). Prefer letting the user push after they commit.
+- Never add or request a `Co-authored-by: Cursor` trailer.
