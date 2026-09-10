@@ -45,10 +45,31 @@ In the Worker/Pages project → **Settings → Variables and Secrets**, set:
 | `TURNSTILE_SECRET_KEY` | secret | From Turnstile |
 | `RESEND_API_KEY` | secret | From Resend |
 | `TMDB_API_KEY` | **secret** | From [TMDB API settings](https://www.themoviedb.org/settings/api) — movie poster lookup in admin |
+| `UNSPLASH_ACCESS_KEY` | **secret** | From [Unsplash developers](https://unsplash.com/oauth/applications) — trip cover lookup |
 
 Do **not** set `ADMIN_DEV_BYPASS=true` in production.
 
 Also bind the D1 database as `DB` if the dashboard does not pick it up from `wrangler.jsonc`.
+
+### R2 media bucket (stop photos)
+
+1. In the Cloudflare dashboard, enable **R2** for your account (Billing → R2, or R2 overview).
+2. Create the bucket once:
+
+```bash
+npx wrangler r2 bucket create webpage-tomi-media
+```
+
+The `MEDIA` binding in `wrangler.jsonc` points at that bucket. Stop photos are served at `/media/...`.
+
+After pulling schema changes, apply migrations and deploy:
+
+```bash
+npm run db:migrate:remote
+npm run deploy
+```
+
+(Merging to GitHub alone does not update the live Worker.)
 
 ## 4. Cloudflare Access (admin)
 
@@ -82,7 +103,14 @@ After this, only you can open the admin UI or call admin APIs.
 
 Book covers use Open Library (no API key). Attribution appears on `/recommendations` when those images are shown.
 
-## 8. Bot protection
+## 8. Unsplash (trip covers)
+
+1. Create an app at [unsplash.com/oauth/applications](https://unsplash.com/oauth/applications)
+2. Copy the **Access Key**
+3. Set `UNSPLASH_ACCESS_KEY` as a secret (and in `.dev.vars` locally)
+4. In `/admin/trips`, edit a trip and use **Fetch photo (Unsplash)**
+
+## 9. Bot protection
 
 In Cloudflare for your domain:
 

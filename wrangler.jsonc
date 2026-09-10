@@ -19,6 +19,12 @@
 			"migrations_dir": "migrations"
 		}
 	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "webpage-tomi-media"
+		}
+	],
 	"vars": {
 		"SITE_NAME": "Tomas Boschetto",
 		"LINKEDIN_URL": "https://www.linkedin.com/in/tomasboschetto/"

@@ -62,10 +62,21 @@ if (showTravel && countryFilterValid) {
 const trips = sortTrips(rawTrips, showTravel || !activeType ? tripSort : 'newest');
 
 const tripCards = await Promise.all(
-	trips.map(async (trip) => ({
-		trip,
-		stopCount: (await listItineraryForTrip(env.DB, trip.id)).length,
-	})),
+	trips.map(async (trip) => {
+		const items = await listItineraryForTrip(env.DB, trip.id);
+		const countryCodes = [
+			...new Set(
+				items
+					.map((item) => item.country_code?.toUpperCase())
+					.filter((code): code is string => Boolean(code)),
+			),
+		];
+		return {
+			trip,
+			stopCount: items.length,
+			countryCodes,
+		};
+	}),
 );
 
 function hrefForType(type: string | null) {
@@ -87,12 +98,14 @@ const showMediaToolbar = !showTravel && allMedia.length > 0;
 const showTravelToolbar = showTravel && allTrips.length > 0;
 
 const coverSources = new Set(
-	mediaItems
-		.map((item) => coverSourceFromUrl(item.image_url))
-		.filter((source): source is 'tmdb' | 'openlibrary' => source != null),
+	[
+		...mediaItems.map((item) => coverSourceFromUrl(item.image_url)),
+		...tripCards.map(({ trip }) => coverSourceFromUrl(trip.image_url)),
+	].filter((source): source is 'tmdb' | 'openlibrary' | 'unsplash' => source != null),
 );
 const showTmdbCredit = coverSources.has('tmdb');
 const showOpenLibraryCredit = coverSources.has('openlibrary');
+const showUnsplashCredit = coverSources.has('unsplash');
 ---
 
 <BaseLayout title="Recommendations" description="Movie, book, and travel recommendations.">
@@ -205,17 +218,23 @@ const showOpenLibraryCredit = coverSources.has('openlibrary');
 		)
 	}
 
-	{showTravel && <Planisphere countries={countries} />}
-
 	{
 		empty ? (
 			<p class="empty">Nothing published here yet. Check back soon.</p>
 		) : showTravel ? (
-			<section class="travel-trips">
-				<div class="rec-list">
-					{tripCards.map(({ trip, stopCount }) => (
-						<TripCard trip={trip} stopCount={stopCount} />
-					))}
+			<section class="travel-split" data-travel-split>
+				<div class="travel-split__list" data-travel-list>
+					<div class="rec-list travel-split__cards">
+						{tripCards.map(({ trip, stopCount, countryCodes }) => (
+							<TripCard trip={trip} stopCount={stopCount} countryCodes={countryCodes} />
+						))}
+					</div>
+					<p class="travel-split__empty empty" data-travel-empty hidden>
+						No trips for that country.
+					</p>
+				</div>
+				<div class="travel-split__map">
+					<Planisphere countries={countries} id="travel-planisphere" />
 				</div>
 			</section>
 		) : (
@@ -224,11 +243,11 @@ const showOpenLibraryCredit = coverSources.has('openlibrary');
 					{mediaItems.map((item) => (
 						<RecCard item={item} />
 					))}
-					{tripCards.map(({ trip, stopCount }) => (
-						<TripCard trip={trip} stopCount={stopCount} />
+					{tripCards.map(({ trip, stopCount, countryCodes }) => (
+						<TripCard trip={trip} stopCount={stopCount} countryCodes={countryCodes} />
 					))}
 				</div>
-				{(showTmdbCredit || showOpenLibraryCredit) && (
+				{(showTmdbCredit || showOpenLibraryCredit || showUnsplashCredit) && (
 					<p class="rec-attribution">
 						{showTmdbCredit && (
 							<>
@@ -237,7 +256,7 @@ const showOpenLibraryCredit = coverSources.has('openlibrary');
 									TMDB
 								</a>
 								. This product uses the TMDB API but is not endorsed or certified by TMDB.
-								{showOpenLibraryCredit ? ' ' : ''}
+								{showOpenLibraryCredit || showUnsplashCredit ? ' ' : ''}
 							</>
 						)}
 						{showOpenLibraryCredit && (
@@ -247,11 +266,33 @@ const showOpenLibraryCredit = coverSources.has('openlibrary');
 									Open Library
 								</a>
 								.
+								{showUnsplashCredit ? ' ' : ''}
+							</>
+						)}
+						{showUnsplashCredit && (
+							<>
+								Trip photos from{' '}
+								<a href="https://unsplash.com/" rel="noopener noreferrer" target="_blank">
+									Unsplash
+								</a>
+								.
 							</>
 						)}
 					</p>
 				)}
 			</>
+		)
+	}
+
+	{
+		showTravel && showUnsplashCredit && (
+			<p class="rec-attribution">
+				Trip photos from{' '}
+				<a href="https://unsplash.com/" rel="noopener noreferrer" target="_blank">
+					Unsplash
+				</a>
+				.
+			</p>
 		)
 	}
 </BaseLayout>
@@ -263,4 +304,74 @@ const showOpenLibraryCredit = coverSources.has('openlibrary');
 			if (form instanceof HTMLFormElement) form.requestSubmit();
 		});
 	});
+
+	const split = document.querySelector('[data-travel-split]');
+	if (split) {
+		const list = split.querySelector('[data-travel-list]');
+		const emptyEl = split.querySelector('[data-travel-empty]');
+		const cards = Array.from(split.querySelectorAll('[data-trip-card]'));
+		const mapRoot = split.querySelector('[data-planisphere-map]');
+		const legend = split.querySelector('[data-planisphere-legend]');
+		const mapColumn = split.querySelector('.travel-split__map');
+
+		function syncListHeight() {
+			if (!(list instanceof HTMLElement) || !(mapColumn instanceof HTMLElement)) return;
+			if (window.matchMedia('(max-width: 899px)').matches) {
+				list.style.maxHeight = '';
+				return;
+			}
+			list.style.maxHeight = `${Math.max(mapColumn.offsetHeight, 240)}px`;
+		}
+
+		if (mapColumn && 'ResizeObserver' in window) {
+			new ResizeObserver(() => syncListHeight()).observe(mapColumn);
+		}
+		window.addEventListener('resize', syncListHeight);
+		syncListHeight();
+
+		function applyCountryFilter(code) {
+			const normalized = code ? String(code).toUpperCase() : '';
+			let visible = 0;
+			cards.forEach((card) => {
+				const countries = String(card.getAttribute('data-countries') || '')
+					.split(',')
+					.map((c) => c.trim().toUpperCase())
+					.filter(Boolean);
+				const show = !normalized || countries.includes(normalized);
+				card.hidden = !show;
+				if (show) visible += 1;
+			});
+			if (emptyEl instanceof HTMLElement) {
+				emptyEl.hidden = visible > 0;
+			}
+			mapRoot?.querySelectorAll('path.country.is-visited').forEach((path) => {
+				path.classList.toggle('is-hover-filter', Boolean(normalized) && path.id === normalized);
+			});
+			legend?.querySelectorAll('[data-legend-code]').forEach((row) => {
+				row.classList.toggle(
+					'is-hover-filter',
+					Boolean(normalized) && row.getAttribute('data-legend-code') === normalized,
+				);
+			});
+		}
+
+		function clearHoverFilter() {
+			applyCountryFilter('');
+		}
+
+		mapRoot?.querySelectorAll('path.country.is-visited').forEach((path) => {
+			path.addEventListener('mouseenter', () => applyCountryFilter(path.id));
+			path.addEventListener('mouseleave', clearHoverFilter);
+			path.addEventListener('focus', () => applyCountryFilter(path.id));
+			path.addEventListener('blur', clearHoverFilter);
+			if (!path.hasAttribute('tabindex')) path.setAttribute('tabindex', '0');
+		});
+
+		legend?.querySelectorAll('[data-legend-code]').forEach((row) => {
+			row.addEventListener('mouseenter', () =>
+				applyCountryFilter(row.getAttribute('data-legend-code')),
+			);
+			row.addEventListener('mouseleave', clearHoverFilter);
+		});
+	}
 </script>

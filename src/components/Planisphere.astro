@@ -73,7 +73,7 @@ const mapHtml = highlightWorld(worldSvg, codes);
 	<ul class="planisphere__legend" data-planisphere-legend>
 		{
 			countries.map((c) => (
-				<li>
+				<li data-legend-code={c.country_code.toUpperCase()}>
 					<img
 						class="planisphere__flag"
 						src={flagUrl(c.country_code)}

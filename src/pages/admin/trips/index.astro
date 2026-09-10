@@ -140,7 +140,7 @@ const countries = authorized
 					legend.innerHTML = countries
 						.map(
 							(c) => `
-						<li>
+						<li data-legend-code="${escapeHtml(String(c.country_code).toUpperCase())}">
 							<img class="planisphere__flag" src="${flagUrl(c.country_code)}" alt="" width="20" height="15" loading="lazy" decoding="async" />
 							<strong>${escapeHtml(c.name)}</strong>
 							<span class="planisphere__note"> (${escapeHtml(c.country_code)})</span>
@@ -347,6 +347,7 @@ const countries = authorized
 				const id = trip?.id || '';
 				const title = escapeHtml(trip?.title || '');
 				const summary = escapeHtml(trip?.summary || '');
+				const image = escapeHtml(trip?.image_url || '');
 				const published = !trip || trip.published === 1;
 				return `
 					<form class="form admin-entry-form" data-mode="${mode}">
@@ -359,6 +360,15 @@ const countries = authorized
 							Summary
 							<textarea name="summary" required maxlength="4000">${summary}</textarea>
 						</label>
+						<label>
+							Cover image URL
+							<input type="url" name="image_url" maxlength="500" placeholder="https://" value="${image}" data-cover-url />
+						</label>
+						<div class="admin-cover-tools">
+							<button class="btn btn--ghost" type="button" data-action="fetch-cover">Fetch photo (Unsplash)</button>
+							<p class="form__status" data-cover-status role="status" aria-live="polite"></p>
+						</div>
+						<img class="admin-cover-preview" data-cover-preview alt="" ${image ? `src="${image}"` : 'hidden'} width="210" height="140" />
 						<label class="checkbox-row">
 							<input type="checkbox" name="published" ${published ? 'checked' : ''} />
 							Published
@@ -388,6 +398,8 @@ const countries = authorized
 				const selectedType = item?.place_type || placeTypes[0]?.value || 'other';
 				const lat = item?.lat != null ? String(item.lat) : '';
 				const lng = item?.lng != null ? String(item.lng) : '';
+				const image = escapeHtml(item?.image_url || '');
+				const canUpload = mode === 'edit' && Boolean(item?.id);
 
 				return `
 					<form class="form admin-entry-form" data-mode="${mode}">
@@ -432,6 +444,22 @@ const countries = authorized
 							Sort order
 							<input type="number" name="sort_order" min="0" step="1" placeholder="Auto" value="${escapeHtml(order)}" />
 						</label>
+						${
+							canUpload
+								? `
+						<div class="admin-stop-photo" data-stop-photo>
+							<p class="admin-map-picker__label">Stop photo</p>
+							<p class="admin-map-picker__hint">JPEG/PNG/WebP · resized to 1600px · max ~1.5MB</p>
+							<img class="admin-cover-preview" data-stop-photo-preview alt="" ${image ? `src="${image}"` : 'hidden'} width="240" height="160" />
+							<input type="file" accept="image/jpeg,image/png,image/webp" data-stop-photo-file />
+							<div class="form__actions">
+								<button class="btn btn--ghost" type="button" data-action="upload-photo">Upload photo</button>
+								<button class="btn btn--ghost" type="button" data-action="remove-photo" ${image ? '' : 'hidden'}>Remove photo</button>
+							</div>
+							<p class="form__status" data-photo-status role="status" aria-live="polite"></p>
+						</div>`
+								: `<p class="admin-map-picker__hint">Save this stop first, then edit it to upload a photo.</p>`
+						}
 						<div class="admin-map-picker">
 							<p class="admin-map-picker__label">Map pin</p>
 							<p class="admin-map-picker__hint">Click the map to place the pin. Drag to adjust.</p>
@@ -458,6 +486,7 @@ const countries = authorized
 				return {
 					title: String(data.get('title') || ''),
 					summary: String(data.get('summary') || ''),
+					image_url: String(data.get('image_url') || '') || null,
 					published: form.querySelector('[name="published"]')?.checked === true,
 				};
 			}
@@ -487,6 +516,36 @@ const countries = authorized
 			}
 
 			/**
+			 * Resize image in-browser before upload (max 1600px, JPEG ~0.82).
+			 * @param {File} file
+			 * @returns {Promise<Blob>}
+			 */
+			async function resizeImageForUpload(file) {
+				const bitmap = await createImageBitmap(file);
+				const maxEdge = 1600;
+				const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+				const width = Math.max(1, Math.round(bitmap.width * scale));
+				const height = Math.max(1, Math.round(bitmap.height * scale));
+				const canvas = document.createElement('canvas');
+				canvas.width = width;
+				canvas.height = height;
+				const ctx = canvas.getContext('2d');
+				if (!ctx) throw new Error('Canvas unavailable');
+				ctx.drawImage(bitmap, 0, 0, width, height);
+				bitmap.close();
+				const type = file.type === 'image/png' || file.type === 'image/webp' ? file.type : 'image/jpeg';
+				const quality = type === 'image/jpeg' ? 0.82 : undefined;
+				const blob = await new Promise((resolve, reject) => {
+					canvas.toBlob(
+						(result) => (result ? resolve(result) : reject(new Error('Resize failed'))),
+						type,
+						quality,
+					);
+				});
+				return blob;
+			}
+
+			/**
 			 * @param {HTMLElement} host
 			 * @param {any | null} trip
 			 * @param {'create' | 'edit'} mode
@@ -495,6 +554,53 @@ const countries = authorized
 			function mountTripForm(host, trip, mode, onCancel) {
 				host.innerHTML = buildTripFormHtml(trip, mode);
 				const form = host.querySelector('form');
+				const coverInput = form?.querySelector('[data-cover-url]');
+				const coverPreview = form?.querySelector('[data-cover-preview]');
+				const coverStatus = form?.querySelector('[data-cover-status]');
+
+				function setCoverStatus(message, ok = true) {
+					if (!coverStatus) return;
+					coverStatus.className = `form__status ${ok ? 'form__status--ok' : 'form__status--err'}`;
+					coverStatus.textContent = message;
+				}
+
+				function syncCoverPreview(url) {
+					if (!(coverPreview instanceof HTMLImageElement)) return;
+					const next = String(url || '').trim();
+					if (!next) {
+						coverPreview.hidden = true;
+						coverPreview.removeAttribute('src');
+						return;
+					}
+					coverPreview.hidden = false;
+					coverPreview.src = next;
+				}
+
+				coverInput?.addEventListener('input', () => {
+					syncCoverPreview(coverInput instanceof HTMLInputElement ? coverInput.value : '');
+				});
+
+				form?.querySelector('[data-action="fetch-cover"]')?.addEventListener('click', async () => {
+					if (!(form instanceof HTMLFormElement)) return;
+					const data = new FormData(form);
+					setCoverStatus('Looking up photo…');
+					const res = await fetch('/api/admin/trip-covers', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ query: String(data.get('title') || '') }),
+					});
+					const json = await res.json();
+					if (!res.ok) {
+						setCoverStatus(json.error || 'Photo lookup failed.', false);
+						return;
+					}
+					if (coverInput instanceof HTMLInputElement) {
+						coverInput.value = json.image_url;
+					}
+					syncCoverPreview(json.image_url);
+					setCoverStatus(`Matched “${json.matched_title}”. Save the trip to keep this cover.`);
+				});
+
 				form?.querySelector('[data-action="cancel"]')?.addEventListener('click', onCancel);
 				form?.addEventListener('submit', async (event) => {
 					event.preventDefault();
@@ -528,6 +634,10 @@ const countries = authorized
 				host.innerHTML = buildStopFormHtml(item, mode);
 				const form = host.querySelector('form');
 				const statusEl = host.querySelector('[data-stop-status]');
+				const photoStatus = host.querySelector('[data-photo-status]');
+				const photoPreview = host.querySelector('[data-stop-photo-preview]');
+				const photoFile = host.querySelector('[data-stop-photo-file]');
+				const removePhotoBtn = host.querySelector('[data-action="remove-photo"]');
 
 				function setStopStatus(message, ok = true) {
 					if (!statusEl) return;
@@ -535,8 +645,83 @@ const countries = authorized
 					statusEl.textContent = message;
 				}
 
+				function setPhotoStatus(message, ok = true) {
+					if (!photoStatus) return;
+					photoStatus.className = `form__status ${ok ? 'form__status--ok' : 'form__status--err'}`;
+					photoStatus.textContent = message;
+				}
+
+				function syncPhotoPreview(url) {
+					if (!(photoPreview instanceof HTMLImageElement)) return;
+					const next = String(url || '').trim();
+					if (!next) {
+						photoPreview.hidden = true;
+						photoPreview.removeAttribute('src');
+						removePhotoBtn?.setAttribute('hidden', '');
+						return;
+					}
+					photoPreview.hidden = false;
+					photoPreview.src = next;
+					removePhotoBtn?.removeAttribute('hidden');
+				}
+
 				form?.querySelector('[data-action="cancel"]')?.addEventListener('click', onDone);
 				void mountMapPicker(host, { lat: item?.lat ?? null, lng: item?.lng ?? null });
+
+				form?.querySelector('[data-action="upload-photo"]')?.addEventListener('click', async () => {
+					const stopId = String(new FormData(form).get('id') || '');
+					const file =
+						photoFile instanceof HTMLInputElement && photoFile.files?.[0]
+							? photoFile.files[0]
+							: null;
+					if (!stopId) {
+						setPhotoStatus('Save the stop before uploading a photo.', false);
+						return;
+					}
+					if (!file) {
+						setPhotoStatus('Choose an image file first.', false);
+						return;
+					}
+					try {
+						setPhotoStatus('Resizing and uploading…');
+						const blob = await resizeImageForUpload(file);
+						if (blob.size > 1.5 * 1024 * 1024) {
+							setPhotoStatus('Image is still over 1.5MB after resize. Try a smaller file.', false);
+							return;
+						}
+						const body = new FormData();
+						body.append('file', blob, file.name || 'stop.jpg');
+						const res = await fetch(`/api/admin/itinerary/${stopId}/image`, {
+							method: 'POST',
+							body,
+						});
+						const json = await res.json();
+						if (!res.ok) {
+							setPhotoStatus(json.error || 'Upload failed.', false);
+							return;
+						}
+						syncPhotoPreview(json.image_url);
+						setPhotoStatus('Photo uploaded.');
+						await loadStops(tripId);
+					} catch (err) {
+						setPhotoStatus(err instanceof Error ? err.message : 'Upload failed.', false);
+					}
+				});
+
+				removePhotoBtn?.addEventListener('click', async () => {
+					const stopId = String(new FormData(form).get('id') || '');
+					if (!stopId) return;
+					const res = await fetch(`/api/admin/itinerary/${stopId}/image`, { method: 'DELETE' });
+					const json = await res.json();
+					if (!res.ok) {
+						setPhotoStatus(json.error || 'Remove failed.', false);
+						return;
+					}
+					syncPhotoPreview('');
+					if (photoFile instanceof HTMLInputElement) photoFile.value = '';
+					setPhotoStatus('Photo removed.');
+					await loadStops(tripId);
+				});
 
 				form?.addEventListener('submit', async (event) => {
 					event.preventDefault();

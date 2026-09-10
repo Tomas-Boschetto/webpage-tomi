@@ -66,8 +66,10 @@ export async function createTrip(db: D1Database, input: TripInput): Promise<Trip
 	const published = input.published === false ? 0 : 1;
 
 	await db
-		.prepare(`INSERT INTO trips (id, title, summary, published) VALUES (?, ?, ?, ?)`)
-		.bind(id, input.title.trim(), input.summary.trim(), published)
+		.prepare(
+			`INSERT INTO trips (id, title, summary, image_url, published) VALUES (?, ?, ?, ?, ?)`,
+		)
+		.bind(id, input.title.trim(), input.summary.trim(), emptyToNull(input.image_url), published)
 		.run();
 
 	const row = await getTripById(db, id);
@@ -84,23 +86,29 @@ export async function updateTrip(
 	if (!existing) return null;
 
 	const published = input.published === false ? 0 : 1;
+	const imageUrl =
+		input.image_url !== undefined ? emptyToNull(input.image_url) : existing.image_url;
 
 	await db
 		.prepare(
 			`UPDATE trips
-			 SET title = ?, summary = ?, published = ?, updated_at = datetime('now')
+			 SET title = ?, summary = ?, image_url = ?, published = ?, updated_at = datetime('now')
 			 WHERE id = ?`,
 		)
-		.bind(input.title.trim(), input.summary.trim(), published, id)
+		.bind(input.title.trim(), input.summary.trim(), imageUrl, published, id)
 		.run();
 
 	return getTripById(db, id);
 }
 
-export async function deleteTrip(db: D1Database, id: string): Promise<boolean> {
+/** Deletes trip + stops; returns removed stops (for R2 cleanup). */
+export async function deleteTrip(db: D1Database, id: string): Promise<ItineraryItem[] | null> {
+	const existing = await getTripById(db, id);
+	if (!existing) return null;
+	const items = await listItineraryForTrip(db, id);
 	await db.prepare(`DELETE FROM itinerary_items WHERE trip_id = ?`).bind(id).run();
-	const result = await db.prepare(`DELETE FROM trips WHERE id = ?`).bind(id).run();
-	return (result.meta.changes ?? 0) > 0;
+	await db.prepare(`DELETE FROM trips WHERE id = ?`).bind(id).run();
+	return items;
 }
 
 export async function getItineraryItem(
@@ -127,7 +135,9 @@ export async function createItineraryItem(
 	let sortOrder = input.sort_order;
 	if (sortOrder == null) {
 		const row = await db
-			.prepare(`SELECT COALESCE(MAX(sort_order), -1) AS max_order FROM itinerary_items WHERE trip_id = ?`)
+			.prepare(
+				`SELECT COALESCE(MAX(sort_order), -1) AS max_order FROM itinerary_items WHERE trip_id = ?`,
+			)
 			.bind(tripId)
 			.first<{ max_order: number }>();
 		sortOrder = (row?.max_order ?? -1) + 1;
@@ -136,8 +146,8 @@ export async function createItineraryItem(
 	await db
 		.prepare(
 			`INSERT INTO itinerary_items
-			 (id, trip_id, place_name, place_type, how_i_got_there, visited_at, notes, url, lat, lng, country_code, country_name, sort_order)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 (id, trip_id, place_name, place_type, how_i_got_there, visited_at, notes, url, image_url, lat, lng, country_code, country_name, sort_order)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		)
 		.bind(
 			id,
@@ -148,6 +158,7 @@ export async function createItineraryItem(
 			input.visited_at,
 			emptyToNull(input.notes),
 			emptyToNull(input.url),
+			null,
 			input.lat ?? null,
 			input.lng ?? null,
 			input.country_code,
@@ -207,16 +218,45 @@ export async function updateItineraryItem(
 	return getItineraryItem(db, id);
 }
 
-export async function deleteItineraryItem(db: D1Database, id: string): Promise<boolean> {
+export async function setItineraryItemImageUrl(
+	db: D1Database,
+	id: string,
+	imageUrl: string | null,
+): Promise<ItineraryItem | null> {
 	const existing = await getItineraryItem(db, id);
-	if (!existing) return false;
+	if (!existing) return null;
 
-	const result = await db.prepare(`DELETE FROM itinerary_items WHERE id = ?`).bind(id).run();
+	await db
+		.prepare(
+			`UPDATE itinerary_items
+			 SET image_url = ?, updated_at = datetime('now')
+			 WHERE id = ?`,
+		)
+		.bind(emptyToNull(imageUrl), id)
+		.run();
+
 	await db
 		.prepare(`UPDATE trips SET updated_at = datetime('now') WHERE id = ?`)
 		.bind(existing.trip_id)
 		.run();
-	return (result.meta.changes ?? 0) > 0;
+
+	return getItineraryItem(db, id);
+}
+
+/** Deletes stop; returns removed row (for R2 cleanup). */
+export async function deleteItineraryItem(
+	db: D1Database,
+	id: string,
+): Promise<ItineraryItem | null> {
+	const existing = await getItineraryItem(db, id);
+	if (!existing) return null;
+
+	await db.prepare(`DELETE FROM itinerary_items WHERE id = ?`).bind(id).run();
+	await db
+		.prepare(`UPDATE trips SET updated_at = datetime('now') WHERE id = ?`)
+		.bind(existing.trip_id)
+		.run();
+	return existing;
 }
 
 export function parseTripInput(body: unknown): TripInput | { error: string } {
@@ -224,7 +264,7 @@ export function parseTripInput(body: unknown): TripInput | { error: string } {
 		return { error: 'Invalid JSON body' };
 	}
 	const data = body as Record<string, unknown>;
-	const { title, summary, published } = data;
+	const { title, summary, published, image_url } = data;
 
 	if (typeof title !== 'string' || title.trim().length < 1 || title.length > 200) {
 		return { error: 'title is required (max 200 chars)' };
@@ -233,9 +273,26 @@ export function parseTripInput(body: unknown): TripInput | { error: string } {
 		return { error: 'summary is required (max 4000 chars)' };
 	}
 
+	let imageUrl: string | null | undefined;
+	if (image_url != null && image_url !== '') {
+		if (typeof image_url !== 'string') {
+			return { error: 'image_url must be a string' };
+		}
+		if (image_url.trim() && !isSafeHttpUrl(image_url)) {
+			return { error: 'image_url must be an http(s) URL' };
+		}
+		if (image_url.trim().length > 500) {
+			return { error: 'image_url max 500 chars' };
+		}
+		imageUrl = image_url.trim() || null;
+	} else if (image_url === null || image_url === '') {
+		imageUrl = null;
+	}
+
 	return {
 		title,
 		summary,
+		image_url: imageUrl,
 		published: published === false || published === 0 ? false : true,
 	};
 }

@@ -47,6 +47,7 @@ export interface Trip {
 	id: string;
 	title: string;
 	summary: string;
+	image_url: string | null;
 	published: number;
 	created_at: string;
 	updated_at: string;
@@ -55,6 +56,7 @@ export interface Trip {
 export interface TripInput {
 	title: string;
 	summary: string;
+	image_url?: string | null;
 	published?: boolean;
 }
 
@@ -67,6 +69,7 @@ export interface ItineraryItem {
 	visited_at: string;
 	notes: string | null;
 	url: string | null;
+	image_url: string | null;
 	lat: number | null;
 	lng: number | null;
 	country_code: string;

@@ -4,12 +4,33 @@ import type { Trip } from '../lib/types';
 interface Props {
 	trip: Trip;
 	stopCount?: number;
+	countryCodes?: string[];
 }
 
-const { trip, stopCount } = Astro.props;
+const { trip, stopCount, countryCodes = [] } = Astro.props;
+const hasCover = Boolean(trip.image_url);
+const countriesAttr = countryCodes.map((c) => c.toUpperCase()).join(',');
 ---
 
-<article class="rec-item">
+<article
+	class:list={['rec-item', 'trip-card', hasCover && 'rec-item--with-cover', hasCover && 'trip-card--with-cover']}
+	data-trip-card
+	data-countries={countriesAttr}
+>
+	{
+		hasCover && (
+			<div class="rec-item__media trip-card__media">
+				<img
+					src={trip.image_url!}
+					alt=""
+					width="210"
+					height="140"
+					loading="lazy"
+					decoding="async"
+				/>
+			</div>
+		)
+	}
 	<p class="rec-item__meta">Trip{typeof stopCount === 'number' ? ` · ${stopCount} stops` : ''}</p>
 	<h3 class="rec-item__title">
 		<a class="rec-item__title-link" href={`/trips/${trip.id}`}>{trip.title}</a>

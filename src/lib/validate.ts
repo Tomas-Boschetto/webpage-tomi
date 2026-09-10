@@ -12,6 +12,15 @@ export function isSafeHttpUrl(value: string): boolean {
 	}
 }
 
+/** Absolute http(s) URLs or site-relative /media/… keys for stop photos. */
+export function isSafeImageUrl(value: string): boolean {
+	const trimmed = value.trim();
+	if (trimmed.startsWith('/media/')) {
+		return /^\/media\/[a-zA-Z0-9._\-\/]+$/.test(trimmed) && !trimmed.includes('..');
+	}
+	return isSafeHttpUrl(trimmed);
+}
+
 export function parseOptionalRating(
 	rating: unknown,
 ): { value: number | null } | { error: string } {

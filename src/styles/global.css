@@ -85,7 +85,7 @@ p {
 .site-header {
 	position: sticky;
 	top: 0;
-	z-index: 20;
+	z-index: 1100;
 	backdrop-filter: blur(12px);
 	background: rgba(10, 20, 18, 0.72);
 	border-bottom: 1px solid var(--line);
@@ -634,6 +634,14 @@ p {
 	background: rgba(8, 16, 14, 0.55);
 }
 
+.trip-card__media {
+	width: min(11rem, 42%);
+}
+
+.trip-card__media img {
+	aspect-ratio: 3 / 2;
+}
+
 .rec-item__summary {
 	color: var(--muted);
 	margin: 0.45rem 0 0;
@@ -969,6 +977,83 @@ p {
 	margin-top: 0.5rem;
 }
 
+.travel-split {
+	display: grid;
+	gap: 1.25rem;
+	margin-top: 0.5rem;
+	align-items: stretch;
+}
+
+.travel-split__list {
+	min-height: 0;
+	max-height: min(70vh, 34rem);
+	overflow-y: auto;
+	padding-right: 0.35rem;
+	border: 1px solid var(--line);
+	border-radius: calc(var(--radius) + 0.15rem);
+	background: rgba(8, 16, 14, 0.35);
+}
+
+.travel-split__cards {
+	padding: 0.85rem 1rem;
+	gap: 1rem;
+}
+
+.travel-split__cards .rec-item {
+	opacity: 1;
+	transform: none;
+	animation: none;
+}
+
+.travel-split__cards .rec-item[hidden] {
+	display: none;
+}
+
+.travel-split__empty {
+	padding: 0 1rem 1rem;
+}
+
+.travel-split__map .planisphere {
+	margin: 0;
+}
+
+.travel-split__map .planisphere__map .country.is-visited.is-hover-filter {
+	fill: var(--accent-soft);
+}
+
+.travel-split__map .planisphere__legend li.is-hover-filter strong {
+	color: var(--accent-soft);
+}
+
+.itinerary__photo {
+	margin: 0.85rem 0 0;
+	padding: 0;
+}
+
+.itinerary__photo img {
+	display: block;
+	width: 100%;
+	max-width: 36rem;
+	height: auto;
+	border-radius: var(--radius);
+	border: 1px solid var(--line);
+	object-fit: cover;
+	aspect-ratio: 3 / 2;
+	background: rgba(8, 16, 14, 0.55);
+}
+
+@media (min-width: 900px) {
+	.travel-split {
+		grid-template-columns: minmax(16rem, 0.95fr) minmax(0, 1.35fr);
+		gap: 1.5rem;
+		align-items: start;
+	}
+
+	.travel-split__list {
+		max-height: none;
+	}
+}
+
 .empty {
 	color: var(--muted);
 	font-style: italic;
@@ -1264,6 +1349,31 @@ p {
 	border-radius: var(--radius);
 	border: 1px solid var(--line);
 	background: rgba(8, 16, 14, 0.55);
+}
+
+.admin-cover-preview {
+	display: block;
+	width: min(14rem, 100%);
+	height: auto;
+	aspect-ratio: 3 / 2;
+	object-fit: cover;
+	margin: 0.35rem 0 0.75rem;
+	border-radius: var(--radius);
+	border: 1px solid var(--line);
+	background: rgba(8, 16, 14, 0.55);
+}
+
+.admin-cover-tools {
+	display: grid;
+	gap: 0.35rem;
+	margin: -0.35rem 0 0.5rem;
+}
+
+.admin-stop-photo {
+	display: grid;
+	gap: 0.45rem;
+	padding: 0.75rem 0;
+	border-top: 1px solid var(--line);
 }
 
 .badge {
