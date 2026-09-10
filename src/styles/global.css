@@ -1153,7 +1153,7 @@ p {
 }
 
 .admin-row--media {
-	grid-template-columns: 3rem minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr) 3rem;
 	column-gap: 0.9rem;
 	align-items: start;
 }
@@ -1166,6 +1166,7 @@ p {
 	border-radius: calc(var(--radius) - 0.1rem);
 	border: 1px solid var(--line);
 	background: rgba(8, 16, 14, 0.55);
+	justify-self: end;
 }
 
 .admin-row__thumb--empty {
