@@ -97,8 +97,6 @@ const countries = authorized
 			let tripsCache = [];
 			/** @type {Record<string, any[]>} */
 			const stopsByTrip = {};
-			/** @type {Set<string>} */
-			const collapsedStops = new Set();
 			/** @type {Promise<void> | null} */
 			let leafletPromise = null;
 
@@ -693,40 +691,32 @@ const countries = authorized
 					return;
 				}
 
-				const bodyCollapsed = collapsedStops.has(tripId);
 				editor.hidden = false;
 				editor.innerHTML = `
 					<div class="admin-stops">
-						<div class="admin-stops__map-wrap">
-							<div class="admin-stops__map trip-map" data-overview-map role="application" aria-label="Trip stops map"></div>
-							<p class="admin-stops__hint">Stops with a pin appear on this map. Use Edit on a stop to move its pin.</p>
-						</div>
-						<div class="admin-stops__body" data-stops-body ${bodyCollapsed ? 'hidden' : ''}>
+						<div class="admin-stops__map trip-map" data-overview-map role="application" aria-label="Trip stops map"></div>
+						<p class="admin-stops__hint">Pins mark stops with a location. Edit a stop to move its pin.</p>
+						<div class="admin-stops__body" data-stops-body>
 							<div class="admin-list" data-stop-list></div>
 							<section class="admin-add">
 								<div class="admin-stops__actions">
 									<button class="btn btn--primary" type="button" data-add-stop-toggle aria-expanded="false">Add stop</button>
-									<button class="btn btn--ghost" type="button" data-collapse-stops>Collapse</button>
+									<button class="btn btn--ghost" type="button" data-collapse-stops>Close</button>
 								</div>
 								<div class="admin-expand" data-add-stop-panel hidden>
 									<div data-add-stop-host></div>
 								</div>
 							</section>
 						</div>
-						<button class="btn btn--ghost" type="button" data-expand-stops ${bodyCollapsed ? '' : 'hidden'}>
-							Show stops
-						</button>
 					</div>
 				`;
 
 				const overviewEl = editor.querySelector('[data-overview-map]');
 				const listEl = editor.querySelector('[data-stop-list]');
-				const bodyEl = editor.querySelector('[data-stops-body]');
 				const addToggle = editor.querySelector('[data-add-stop-toggle]');
 				const addPanel = editor.querySelector('[data-add-stop-panel]');
 				const addHost = editor.querySelector('[data-add-stop-host]');
-				const collapseBtn = editor.querySelector('[data-collapse-stops]');
-				const expandBtn = editor.querySelector('[data-expand-stops]');
+				const closeBtn = editor.querySelector('[data-collapse-stops]');
 
 				if (overviewEl) {
 					await mountOverviewMap(
@@ -736,20 +726,9 @@ const countries = authorized
 				}
 				if (listEl) renderStopList(listEl, tripId, stops);
 
-				function setStopsCollapsed(collapsed) {
-					if (collapsed) collapsedStops.add(tripId);
-					else collapsedStops.delete(tripId);
-					if (bodyEl) bodyEl.hidden = collapsed;
-					if (expandBtn) expandBtn.hidden = !collapsed;
-					if (collapsed && listEl) {
-						closeStopEditors(listEl);
-						closeAddStopPanel(editor.querySelector('.admin-stops'));
-					}
-					if (overviewEl?._adminMap) invalidateSoon(overviewEl._adminMap);
-				}
-
-				collapseBtn?.addEventListener('click', () => setStopsCollapsed(true));
-				expandBtn?.addEventListener('click', () => setStopsCollapsed(false));
+				closeBtn?.addEventListener('click', () => {
+					closeAllTripEditors();
+				});
 
 				addToggle?.addEventListener('click', () => {
 					if (!listEl || !addPanel || !addHost) return;

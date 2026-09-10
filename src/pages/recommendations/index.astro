@@ -212,10 +212,6 @@ const showOpenLibraryCredit = coverSources.has('openlibrary');
 			<p class="empty">Nothing published here yet. Check back soon.</p>
 		) : showTravel ? (
 			<section class="travel-trips">
-				<header class="section-head section-head--compact">
-					<h2>Trips</h2>
-					<p>Open a trip for its map and itinerary.</p>
-				</header>
 				<div class="rec-list">
 					{tripCards.map(({ trip, stopCount }) => (
 						<TripCard trip={trip} stopCount={stopCount} />

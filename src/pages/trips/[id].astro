@@ -57,12 +57,6 @@ if (!trip) {
 										<strong>Visited:</strong> {formatVisitedAt(item.visited_at)}
 									</p>
 								)}
-								{item.country_name && (
-									<p class="itinerary__when">
-										<strong>Country:</strong> {item.country_name}
-										{item.country_code ? ` (${item.country_code})` : ''}
-									</p>
-								)}
 								<p class="itinerary__transit">
 									<strong>How I got there:</strong> {item.how_i_got_there}
 								</p>
