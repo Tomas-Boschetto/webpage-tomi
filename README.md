@@ -1,4 +1,4 @@
-# Tomi — personal recommendations site
+# Tomas Boschetto — personal recommendations site
 
 Astro site on Cloudflare Pages/Workers with a D1-backed admin UI for movie, book, and travel recommendations, plus a Turnstile-protected contact form.
 

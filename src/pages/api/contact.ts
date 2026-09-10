@@ -69,7 +69,7 @@ export const POST: APIRoute = async ({ request }) => {
 	}
 
 	const resend = new Resend(apiKey);
-	const siteName = env.SITE_NAME || 'Tomi';
+	const siteName = env.SITE_NAME || 'Tomas Boschetto';
 
 	const { error } = await resend.emails.send({
 		from: `${siteName} Contact <${from}>`,

@@ -4,25 +4,148 @@ import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
-const linkedIn = env.LINKEDIN_URL || 'https://www.linkedin.com/in/your-profile';
+const siteName = env.SITE_NAME || 'Tomas Boschetto';
+
+const slides = [
+	{
+		id: 'ar',
+		src: '/images/hero-ar.jpg',
+		country: 'Argentina',
+		flag: '/images/flags/ar.png',
+		caption: 'Perito Moreno Glacier in Los Glaciares National Park, Patagonia',
+		photographer: 'Hans-Jürgen Weinhardt',
+		unsplash: 'https://unsplash.com/photos/5RFMPufTKPA',
+	},
+	{
+		id: 'pe',
+		src: '/images/hero-pe.jpg',
+		country: 'Peru',
+		flag: '/images/flags/pe.png',
+		caption: 'Machu Picchu stone ruins near Cusco',
+		photographer: 'Eddie Kiszka',
+		unsplash: 'https://unsplash.com/photos/rFESpq5MMTg',
+	},
+	{
+		id: 'ke',
+		src: '/images/hero-ke.jpg',
+		country: 'Kenya',
+		flag: '/images/flags/ke.png',
+		caption: 'Zebras and giraffes on the Amboseli plains with Mount Kilimanjaro beyond',
+		photographer: 'Stephan Bechert',
+		unsplash: 'https://unsplash.com/photos/xQWelDCacZE',
+	},
+	{
+		id: 'kh',
+		src: '/images/hero-kh.jpg',
+		country: 'Cambodia',
+		flag: '/images/flags/kh.png',
+		caption: 'Temple ruins at Angkor, near Siem Reap',
+		photographer: 'James Wheeler',
+		unsplash: 'https://unsplash.com/photos/9zXMb-E8pI0',
+	},
+	{
+		id: 'ch',
+		src: '/images/hero-ch.jpg',
+		country: 'Switzerland',
+		flag: '/images/flags/ch.png',
+		flagShape: 'square' as const,
+		caption: 'The Glacier Express crossing snowy fields in Goms, Valais',
+		photographer: 'Karin Hugentobler',
+		unsplash: 'https://unsplash.com/photos/tt3K-JvHrPY',
+	},
+];
 ---
 
-<BaseLayout title="Tomi" description="Movies, books, and places worth your time.">
+<BaseLayout title={siteName} description="Movies, books, and places worth your time.">
 	<section class="hero" aria-label="Introduction">
-		<div class="hero__media" role="presentation"></div>
-		<div class="hero__content">
-			<h1 class="hero__brand">Tomi</h1>
-			<p class="hero__lead">
-				Personal picks — films, books, and travels I keep coming back to. Updated as I find new
-				ones.
-			</p>
-			<div class="cta-row">
-				<a class="btn btn--primary" href="/recommendations">Browse recommendations</a>
-				<a class="btn btn--ghost" href={linkedIn} rel="noopener noreferrer" target="_blank"
-					>Follow on LinkedIn</a
-				>
-				<a class="btn btn--ghost" href="/contact">Get in touch</a>
-			</div>
+		<div class="hero__media" aria-hidden="true">
+			{
+				slides.map((slide, i) => (
+					<div
+						class:list={['hero__slide', i === 0 && 'is-active']}
+						data-slide={slide.id}
+						style={`background-image: url('${slide.src}')`}
+					/>
+				))
+			}
+			<div class="hero__shade"></div>
 		</div>
+
+		<div class="hero__content">
+			<h1 class="hero__brand">{siteName}</h1>
+			<p class="hero__lead">
+				Here you can find my personal reviews of trips, books, and films. I hope you find them
+				useful — and please let me know if you have a recommendation!
+			</p>
+			<nav class="hero__paths" aria-label="Browse by topic">
+				<a class="hero__path" href="/recommendations?type=travel">
+					<span class="hero__path-label">Trips</span>
+					<span class="hero__path-hint">Travel itineraries</span>
+				</a>
+				<a class="hero__path" href="/recommendations?type=book">
+					<span class="hero__path-label">Books</span>
+					<span class="hero__path-hint">Reading notes</span>
+				</a>
+				<a class="hero__path" href="/recommendations?type=movie">
+					<span class="hero__path-label">Films</span>
+					<span class="hero__path-hint">Movie reviews</span>
+				</a>
+			</nav>
+		</div>
+
+		<ul class="hero__credits" aria-label="Photo credits by country">
+			{
+				slides.map((slide, i) => (
+					<li class:list={['hero__credit', i === 0 && 'is-active']} data-credit={slide.id}>
+						<button
+							type="button"
+							class:list={['hero__flag', slide.flagShape === 'square' && 'hero__flag--square']}
+							aria-describedby={`credit-${slide.id}`}
+							aria-label={`${slide.country} photo credit`}
+						>
+							<img
+								src={slide.flag}
+								alt=""
+								width={slide.flagShape === 'square' ? 26 : 40}
+								height="26"
+							/>
+						</button>
+						<div class="hero__tip" id={`credit-${slide.id}`} role="tooltip">
+							<p class="hero__tip-place">{slide.country}</p>
+							<p class="hero__tip-caption">{slide.caption}</p>
+							<p class="hero__tip-photo">Photo by {slide.photographer}</p>
+							<p class="hero__tip-source">
+								Downloaded from{' '}
+								<a href={slide.unsplash} rel="noopener noreferrer" target="_blank">
+									Unsplash
+								</a>
+							</p>
+						</div>
+					</li>
+				))
+			}
+		</ul>
 	</section>
+
+	<script>
+		const slides = Array.from(document.querySelectorAll('.hero__slide'));
+		const credits = Array.from(document.querySelectorAll('.hero__credit'));
+		if (slides.length > 1) {
+			const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			let index = 0;
+			const show = (next: number) => {
+				slides[index]?.classList.remove('is-active');
+				credits[index]?.classList.remove('is-active');
+				index = next;
+				slides[index]?.classList.add('is-active');
+				credits[index]?.classList.add('is-active');
+			};
+			credits.forEach((credit, i) => {
+				credit.querySelector('.hero__flag')?.addEventListener('click', () => show(i));
+			});
+			if (!reduceMotion) {
+				window.setInterval(() => show((index + 1) % slides.length), 7000);
+			}
+		}
+	</script>
 </BaseLayout>
