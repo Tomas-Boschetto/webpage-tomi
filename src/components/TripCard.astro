@@ -10,6 +10,13 @@ interface Props {
 const { trip, stopCount, countryCodes = [] } = Astro.props;
 const hasCover = Boolean(trip.image_url);
 const countriesAttr = countryCodes.map((c) => c.toUpperCase()).join(',');
+const summaryWords = trip.summary.trim().split(/\s+/).filter(Boolean);
+const summaryTeaser =
+	summaryWords.length === 0
+		? ''
+		: summaryWords.length <= 8
+			? summaryWords.join(' ')
+			: `${summaryWords.slice(0, 8).join(' ')}…`;
 ---
 
 <article
@@ -35,6 +42,6 @@ const countriesAttr = countryCodes.map((c) => c.toUpperCase()).join(',');
 	<h3 class="rec-item__title">
 		<a class="rec-item__title-link" href={`/trips/${trip.id}`}>{trip.title}</a>
 	</h3>
-	<p class="rec-item__summary">{trip.summary}</p>
+	{summaryTeaser && <p class="rec-item__summary">{summaryTeaser}</p>}
 	<a class="rec-item__link" href={`/trips/${trip.id}`}>View itinerary<span class="sr-only"> for {trip.title}</span></a>
 </article>

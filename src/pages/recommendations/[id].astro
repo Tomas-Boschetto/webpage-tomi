@@ -21,7 +21,6 @@ if (!published) {
 	Astro.response.status = 404;
 }
 
-const label = item?.type === 'book' ? 'Book' : 'Movie';
 const creatorLabel = item?.type === 'book' ? 'Author' : 'Director';
 const whenLabel = item?.type === 'book' ? 'Read' : 'Watched';
 const releaseLabel = item?.type === 'book' ? 'Edition published' : 'Released';
@@ -93,10 +92,7 @@ const extraPrizes = prizeRows(extraGroups);
 				}
 
 				<div class="rec-detail__body">
-					<p class="rec-item__meta">
-						{label}
-						{genreBrief ? ` · ${genreBrief}` : ''}
-					</p>
+					{genreBrief && <p class="rec-item__meta">{genreBrief}</p>}
 					<h1 class="rec-detail__title">{item.title}</h1>
 
 					{

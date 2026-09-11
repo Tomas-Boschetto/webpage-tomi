@@ -21,11 +21,13 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 
 ## Admin UX
 
-- [ ] **Larger images** in admin lists/forms (movies, books, trips)
-- [ ] **Trip list layout** in admin should match the public travel list (same card structure / visual rhythm)
-- [ ] **Manage stops button** — when a trip’s stops panel is open (adding/editing a stop), hide or disable **Manage stops** so it doesn’t stay on screen redundantly
-- [ ] **Faster stop entry** — adding stops is too slow; add **map search** (geocode/place search on the Leaflet map) and **auto-populate** stop fields (place name, country, coords, etc.) from lookup sources so less is typed by hand
-- [ ] **Add-stop menus collapse** — after clicking actions in the add-stop flow, related menus/panels that are no longer needed should close so the UI doesn’t stay cluttered
+- [x] **Larger images** in admin lists/forms (movies, books, trips)
+- [x] **Trip list layout** in admin should match the public travel list (same card structure / visual rhythm)
+- [x] **Movie/book admin preview** — admin list/cards for movies and books should look the same as the public recommendations cards (same layout, cover treatment, meta rhythm)
+- [x] **White flash after adding a film** — after saving/adding a movie, the page background suddenly turns white; leaving and coming back changes it again. Find and fix the flash / style reset (likely admin after create, or recommendations refresh)
+- [x] **Manage stops button** — when a trip’s stops panel is open (adding/editing a stop), hide or disable **Manage stops** so it doesn’t stay on screen redundantly
+- [x] **Faster stop entry** — adding stops is too slow; add **map search** (geocode/place search on the Leaflet map) and **auto-populate** stop fields (place name, country, coords, etc.) from lookup sources so less is typed by hand
+- [x] **Add-stop menus collapse** — after clicking actions in the add-stop flow, related menus/panels that are no longer needed should close so the UI doesn’t stay cluttered
 
 ## Trip itinerary + map (public)
 

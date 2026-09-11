@@ -44,14 +44,12 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 					{
 						view === 'movies' ? (
 							<section class="admin-panel">
-								<h2>Movies</h2>
 								<div class="admin-list" id="movies-list">
 									<p class="empty">Loading…</p>
 								</div>
 							</section>
 						) : (
 							<section class="admin-panel">
-								<h2>Books</h2>
 								<div class="admin-list" id="books-list">
 									<p class="empty">Loading…</p>
 								</div>
@@ -83,6 +81,12 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 				normalizeExternalRatingsInput,
 			} from '../../lib/external-ratings';
 			import { STANDARD_GENRES } from '../../lib/genres';
+			import {
+				formatEditionPublished,
+				formatExperiencedAt,
+				formatGenreBrief,
+				formatRating,
+			} from '../../lib/types';
 
 			const app = document.getElementById('admin-app');
 			const view = app?.dataset.view === 'books' ? 'books' : 'movies';
@@ -841,6 +845,130 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 			}
 
 			/**
+			 * @param {any} item
+			 * @param {'movie' | 'book'} formType
+			 */
+			function adminRecCardHtml(item, formType) {
+				const creatorLabel = formType === 'book' ? 'Author' : 'Director';
+				const whenLabel = formType === 'book' ? 'Read' : 'Watched';
+				const ratingText = formatRating(item.rating);
+				const whenText = formatExperiencedAt(item.experienced_at, {
+					monthOnly: formType === 'book',
+				});
+				const releaseText = formatEditionPublished(item.edition_published_at);
+				const originalText = formatEditionPublished(item.original_published_at);
+				const genreBrief = formatGenreBrief(item.genre);
+				const hasCover = Boolean(item.image_url);
+				const blurb = String(item.commentary || '').trim();
+				const blurbShort = blurb.length > 220 ? `${blurb.slice(0, 217).trimEnd()}…` : blurb;
+				const stars =
+					item.rating != null
+						? `${'★'.repeat(Math.round(item.rating))}${'☆'.repeat(Math.max(0, 5 - Math.round(item.rating)))}`
+						: '';
+				const draftBadge = item.published
+					? ''
+					: '<span class="badge badge--draft">draft</span>';
+				const metaBits = [];
+				if (genreBrief) metaBits.push(escapeHtml(genreBrief));
+				if (draftBadge) metaBits.push(draftBadge);
+				const metaHtml = metaBits.length
+					? `<p class="rec-item__meta">${metaBits.join(' · ')}</p>`
+					: '';
+
+				const media = hasCover
+					? `<div class="rec-item__media" aria-hidden="true">
+							<img
+								src="${escapeHtml(item.image_url)}"
+								alt=""
+								width="140"
+								height="210"
+								loading="lazy"
+								decoding="async"
+							/>
+						</div>`
+					: '';
+
+				return `
+					<article class="rec-item admin-rec-card${hasCover ? ' rec-item--with-cover' : ''}">
+						${media}
+						${metaHtml}
+						<h3 class="rec-item__title">${escapeHtml(item.title)}</h3>
+						${
+							ratingText
+								? `<p class="rec-item__rating" aria-label="Rated ${escapeHtml(ratingText)}">
+										<span class="stars" aria-hidden="true">${stars}</span>
+										<span class="rec-item__rating-text">${escapeHtml(ratingText)}</span>
+									</p>`
+								: ''
+						}
+						${whenText ? `<p class="rec-item__when"><strong>${whenLabel}:</strong> ${escapeHtml(whenText)}</p>` : ''}
+						${
+							item.director
+								? `<p class="rec-item__when"><strong>${creatorLabel}:</strong> ${escapeHtml(item.director)}</p>`
+								: ''
+						}
+						${
+							originalText
+								? `<p class="rec-item__when"><strong>${formType === 'book' ? 'First published' : 'Released'}:</strong> ${escapeHtml(originalText)}</p>`
+								: ''
+						}
+						${
+							releaseText && formType === 'book' && releaseText !== originalText
+								? `<p class="rec-item__when"><strong>Edition:</strong> ${escapeHtml(releaseText)}</p>`
+								: ''
+						}
+						${blurbShort ? `<p class="rec-item__summary">${escapeHtml(blurbShort)}</p>` : ''}
+						<div class="admin-row__actions">
+							<button class="btn btn--ghost" type="button" data-action="edit">Edit</button>
+							<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
+						</div>
+					</article>`;
+			}
+
+			const PAGE_SIZE = 10;
+			/** @type {IntersectionObserver | null} */
+			let listObserver = null;
+
+			/**
+			 * @param {HTMLElement} target
+			 */
+			function bindInfiniteScroll(target) {
+				listObserver?.disconnect();
+				listObserver = null;
+				const blocks = Array.from(target.querySelectorAll(':scope > .admin-row-block'));
+				if (blocks.length <= PAGE_SIZE) return;
+
+				blocks.forEach((block, index) => {
+					if (index >= PAGE_SIZE) block.hidden = true;
+					else block.hidden = false;
+				});
+
+				const sentinel = document.createElement('div');
+				sentinel.className = 'rec-infinite-sentinel';
+				sentinel.setAttribute('data-rec-sentinel', '');
+				sentinel.setAttribute('aria-hidden', 'true');
+				target.appendChild(sentinel);
+
+				let shown = PAGE_SIZE;
+				listObserver = new IntersectionObserver(
+					(entries) => {
+						if (!entries.some((entry) => entry.isIntersecting)) return;
+						const next = blocks.slice(shown, shown + PAGE_SIZE);
+						next.forEach((block) => {
+							block.hidden = false;
+						});
+						shown += next.length;
+						if (shown >= blocks.length) {
+							listObserver?.disconnect();
+							sentinel.remove();
+						}
+					},
+					{ root: null, rootMargin: '240px 0px', threshold: 0 },
+				);
+				listObserver.observe(sentinel);
+			}
+
+			/**
 			 * @param {any[]} items
 			 * @param {'movie' | 'book'} formType
 			 * @param {HTMLElement} target
@@ -853,39 +981,13 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 				}
 
 				target.innerHTML = filtered
-					.map((item) => {
-						const cover = item.image_url
-							? `<img class="admin-row__thumb" src="${escapeHtml(item.image_url)}" alt="" width="48" height="72" loading="lazy" decoding="async" />`
-							: `<span class="admin-row__thumb admin-row__thumb--empty" aria-hidden="true"></span>`;
-						return `
+					.map(
+						(item) => `
 					<div class="admin-row-block" data-id="${escapeHtml(item.id)}">
-						<div class="admin-row admin-row--media">
-							<div class="admin-row__main">
-								<div class="admin-row__title">${escapeHtml(item.title)}</div>
-								<div class="admin-row__meta">
-									${
-										item.experienced_at
-											? `${escapeHtml(
-													formType === 'book'
-														? String(item.experienced_at).slice(0, 7)
-														: String(item.experienced_at).slice(0, 10),
-												)}`
-											: 'No date'
-									}
-									${item.rating != null ? ` · ${item.rating}/5` : ''}
-									${item.genre ? ` · ${escapeHtml(item.genre)}` : ''}
-									· ${item.published ? 'published' : '<span class="badge badge--draft">draft</span>'}
-								</div>
-								<div class="admin-row__actions">
-									<button class="btn btn--ghost" type="button" data-action="edit">Edit</button>
-									<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
-								</div>
-							</div>
-							${cover}
-						</div>
+						${adminRecCardHtml(item, formType)}
 						<div class="admin-row__editor admin-expand" hidden></div>
-					</div>`;
-					})
+					</div>`,
+					)
 					.join('');
 
 				target.querySelectorAll('.admin-row-block').forEach((block) => {
@@ -899,6 +1001,7 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 						closeAllEditors();
 						if (already) return;
 						block.classList.add('is-editing');
+						block.hidden = false;
 						const editor = block.querySelector('.admin-row__editor');
 						if (!editor) return;
 						editor.hidden = false;
@@ -920,6 +1023,8 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 						await loadList();
 					});
 				});
+
+				bindInfiniteScroll(target);
 			}
 
 			async function loadList() {
@@ -930,7 +1035,9 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 					return;
 				}
 				itemsCache = await res.json();
-				renderList(itemsCache, type, listEl);
+				const staging = document.createElement('div');
+				renderList(itemsCache, type, staging);
+				listEl.replaceChildren(...staging.childNodes);
 			}
 
 			addToggle?.addEventListener('click', () => {
