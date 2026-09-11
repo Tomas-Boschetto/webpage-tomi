@@ -129,6 +129,9 @@ const sectionBlurb = showTravel
 	: activeType === 'book'
 		? 'Books I’ve read and recommend.'
 		: 'Films I’ve watched and recommend.';
+
+const PAGE_SIZE = 10;
+const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 ---
 
 <BaseLayout title="Recommendations" description="Movie, book, and travel recommendations.">
@@ -140,7 +143,7 @@ const sectionBlurb = showTravel
 	<nav class="tabs" aria-label="Recommendation types">
 		{
 			tabs.map((tab) => (
-				<a href={tab.href} aria-current={tab.current ? 'true' : undefined}>
+				<a href={tab.href} aria-current={tab.current ? 'page' : undefined}>
 					{tab.label}
 				</a>
 			))
@@ -322,11 +325,15 @@ const sectionBlurb = showTravel
 			</section>
 		) : (
 			<>
-				<div class="rec-list">
-					{mediaItems.map((item) => (
-						<RecCard item={item} />
+				<div class="rec-list" data-rec-infinite data-page-size={PAGE_SIZE}>
+					{mediaItems.map((item, index) => (
+						<RecCard item={item} deferred={index >= PAGE_SIZE} />
 					))}
+					{hasMoreMedia && (
+						<div class="rec-infinite-sentinel" data-rec-sentinel aria-hidden="true"></div>
+					)}
 				</div>
+				<p class="rec-infinite-status sr-only" data-rec-status role="status" aria-live="polite"></p>
 				{(showTmdbCredit || showOpenLibraryCredit || showUnsplashCredit || showWikidataCredit) && (
 					<p class="rec-attribution">
 						{showTmdbCredit && (
@@ -394,6 +401,48 @@ const sectionBlurb = showTravel
 			if (form instanceof HTMLFormElement) form.requestSubmit();
 		});
 	});
+
+	const infiniteList = document.querySelector('[data-rec-infinite]');
+	if (infiniteList instanceof HTMLElement) {
+		const pageSize = Math.max(1, Number(infiniteList.dataset.pageSize) || 10);
+		const items = Array.from(infiniteList.querySelectorAll(':scope > .rec-item'));
+		const sentinel = infiniteList.querySelector('[data-rec-sentinel]');
+		const statusEl = document.querySelector('[data-rec-status]');
+		let shown = items.filter((el) => !el.hasAttribute('hidden')).length;
+
+		function setStatus(message) {
+			if (statusEl instanceof HTMLElement) statusEl.textContent = message;
+		}
+
+		function revealMore() {
+			const next = items.slice(shown, shown + pageSize);
+			if (!next.length) return;
+			next.forEach((el) => el.removeAttribute('hidden'));
+			shown += next.length;
+			const remaining = items.length - shown;
+			setStatus(
+				remaining > 0
+					? `Showing ${shown} of ${items.length}. Scroll for more.`
+					: `Showing all ${items.length}.`,
+			);
+			if (remaining <= 0) {
+				observer.disconnect();
+				sentinel?.remove();
+			}
+		}
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) revealMore();
+			},
+			{ root: null, rootMargin: '280px 0px', threshold: 0 },
+		);
+
+		if (sentinel && shown < items.length) {
+			observer.observe(sentinel);
+			setStatus(`Showing ${shown} of ${items.length}. Scroll for more.`);
+		}
+	}
 
 	const split = document.querySelector('[data-travel-split]');
 	if (split) {

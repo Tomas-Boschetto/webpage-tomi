@@ -21,7 +21,7 @@ const countries = authorized
 
 <BaseLayout title="Admin · Trips" description="Manage travel trips and itineraries." robots="noindex, nofollow">
 	<header class="section-head">
-		<h1>Trips</h1>
+		<h1>Admin</h1>
 		<p>Manage trips here. Open a trip to edit its stops on a map.</p>
 	</header>
 
@@ -35,7 +35,7 @@ const countries = authorized
 				<nav class="tabs" aria-label="Admin sections">
 					<a href="/admin?view=movies">Movies</a>
 					<a href="/admin?view=books">Books</a>
-					<a href="/admin/trips" aria-current="true">Trips</a>
+					<a href="/admin/trips" aria-current="page">Trips</a>
 				</nav>
 
 				<Planisphere
@@ -56,7 +56,6 @@ const countries = authorized
 					data-place-types={JSON.stringify(placeTypeOptions)}
 				>
 					<section class="admin-panel">
-						<h2>Trips</h2>
 						<div class="admin-list" id="trip-list">
 							<p class="empty">Loading…</p>
 						</div>
@@ -246,7 +245,9 @@ const countries = authorized
 				const latInput = host.querySelector('[name="lat"]');
 				const lngInput = host.querySelector('[name="lng"]');
 				const clearBtn = host.querySelector('[data-action="clear-pin"]');
-				if (!mapEl || !coordsEl || !latInput || !lngInput) return;
+				if (!mapEl || !coordsEl || !latInput || !lngInput) {
+					return { setPinFromCoords: () => {} };
+				}
 
 				destroyLeafletMap(mapEl);
 				mapEl.innerHTML = '';
@@ -290,6 +291,18 @@ const countries = authorized
 					updateFields(latlng.lat, latlng.lng);
 				}
 
+				/**
+				 * @param {number} lat
+				 * @param {number} lng
+				 * @param {number} [zoom]
+				 */
+				function setPinFromCoords(lat, lng, zoom = 14) {
+					const latlng = L.latLng(lat, lng);
+					setPin(latlng);
+					map.setView(latlng, zoom);
+					invalidateSoon(map);
+				}
+
 				map.on('click', (event) => setPin(event.latlng));
 				clearBtn?.addEventListener('click', clearPin);
 
@@ -305,6 +318,7 @@ const countries = authorized
 
 				mapEl._adminMap = map;
 				invalidateSoon(map);
+				return { setPinFromCoords };
 			}
 
 			function closeAddTripPanel() {
@@ -406,6 +420,17 @@ const countries = authorized
 						<input type="hidden" name="id" value="${escapeHtml(id)}" />
 						<input type="hidden" name="lat" value="${escapeHtml(lat)}" />
 						<input type="hidden" name="lng" value="${escapeHtml(lng)}" />
+						<div class="admin-place-search" data-place-search>
+							<label>
+								Search place (map)
+								<input type="search" data-place-query maxlength="200" placeholder="e.g. Alfama, Lisbon" autocomplete="off" />
+							</label>
+							<p class="admin-map-picker__hint">
+								Search OpenStreetMap Nominatim to fill place name, country, and pin. You can still edit fields after.
+							</p>
+							<ul class="admin-place-search__results" data-place-results hidden></ul>
+							<p class="form__status" data-place-status role="status" aria-live="polite"></p>
+						</div>
 						<label>
 							Place / destination
 							<input type="text" name="place_name" required maxlength="200" value="${place}" />
@@ -625,6 +650,117 @@ const countries = authorized
 
 			/**
 			 * @param {HTMLElement} host
+			 * @param {{ setPinFromCoords: (lat: number, lng: number, zoom?: number) => void }} mapApi
+			 */
+			function mountPlaceSearch(host, mapApi) {
+				const queryInput = host.querySelector('[data-place-query]');
+				const resultsEl = host.querySelector('[data-place-results]');
+				const statusEl = host.querySelector('[data-place-status]');
+				const placeInput = host.querySelector('[name="place_name"]');
+				const countryCodeInput = host.querySelector('[name="country_code"]');
+				const countryNameInput = host.querySelector('[name="country_name"]');
+				if (!(queryInput instanceof HTMLInputElement) || !(resultsEl instanceof HTMLElement)) return;
+
+				/** @type {ReturnType<typeof setTimeout> | null} */
+				let debounceTimer = null;
+				/** @type {AbortController | null} */
+				let abortCtrl = null;
+
+				function setPlaceStatus(message, ok = true) {
+					if (!statusEl) return;
+					statusEl.className = `form__status ${ok ? 'form__status--ok' : 'form__status--err'}`;
+					statusEl.textContent = message;
+				}
+
+				function clearResults() {
+					resultsEl.innerHTML = '';
+					resultsEl.hidden = true;
+				}
+
+				/**
+				 * @param {any} hit
+				 */
+				function applyHit(hit) {
+					if (placeInput instanceof HTMLInputElement) placeInput.value = hit.placeName || '';
+					if (countryCodeInput instanceof HTMLInputElement) {
+						countryCodeInput.value = hit.countryCode || '';
+					}
+					if (countryNameInput instanceof HTMLInputElement) {
+						countryNameInput.value = hit.countryName || '';
+					}
+					mapApi.setPinFromCoords(hit.lat, hit.lng, 14);
+					clearResults();
+					setPlaceStatus('Filled from map search — adjust fields if needed.');
+					queryInput.value = hit.placeName || '';
+				}
+
+				/**
+				 * @param {any[]} hits
+				 */
+				function renderResults(hits) {
+					if (!hits.length) {
+						clearResults();
+						setPlaceStatus('No places found.', false);
+						return;
+					}
+					resultsEl.hidden = false;
+					resultsEl.innerHTML = hits
+						.map(
+							(hit, index) => `
+						<li>
+							<button type="button" class="admin-place-search__hit" data-place-index="${index}">
+								<span class="admin-place-search__hit-name">${escapeHtml(hit.placeName)}</span>
+								<span class="admin-place-search__hit-detail">${escapeHtml(hit.displayName)}</span>
+							</button>
+						</li>`,
+						)
+						.join('');
+					resultsEl.querySelectorAll('[data-place-index]').forEach((btn) => {
+						btn.addEventListener('click', () => {
+							const index = Number(btn.getAttribute('data-place-index'));
+							const hit = hits[index];
+							if (hit) applyHit(hit);
+						});
+					});
+					setPlaceStatus(`${hits.length} place${hits.length === 1 ? '' : 's'} — pick one.`);
+				}
+
+				async function runSearch(q) {
+					abortCtrl?.abort();
+					abortCtrl = new AbortController();
+					setPlaceStatus('Searching…');
+					try {
+						const res = await fetch(`/api/admin/geocode?q=${encodeURIComponent(q)}`, {
+							signal: abortCtrl.signal,
+						});
+						const json = await res.json();
+						if (!res.ok) {
+							clearResults();
+							setPlaceStatus(json.error || 'Place search failed.', false);
+							return;
+						}
+						renderResults(json.results || []);
+					} catch (err) {
+						if (err instanceof DOMException && err.name === 'AbortError') return;
+						clearResults();
+						setPlaceStatus('Place search failed.', false);
+					}
+				}
+
+				queryInput.addEventListener('input', () => {
+					const q = queryInput.value.trim();
+					if (debounceTimer) clearTimeout(debounceTimer);
+					if (q.length < 2) {
+						clearResults();
+						setPlaceStatus('');
+						return;
+					}
+					debounceTimer = setTimeout(() => runSearch(q), 350);
+				});
+			}
+
+			/**
+			 * @param {HTMLElement} host
 			 * @param {string} tripId
 			 * @param {any | null} item
 			 * @param {'create' | 'edit'} mode
@@ -666,7 +802,10 @@ const countries = authorized
 				}
 
 				form?.querySelector('[data-action="cancel"]')?.addEventListener('click', onDone);
-				void mountMapPicker(host, { lat: item?.lat ?? null, lng: item?.lng ?? null });
+				void (async () => {
+					const mapApi = await mountMapPicker(host, { lat: item?.lat ?? null, lng: item?.lng ?? null });
+					mountPlaceSearch(host, mapApi);
+				})();
 
 				form?.querySelector('[data-action="upload-photo"]')?.addEventListener('click', async () => {
 					const stopId = String(new FormData(form).get('id') || '');
@@ -798,16 +937,19 @@ const countries = authorized
 					if (!item) return;
 
 					block.querySelector('[data-action="edit-stop"]')?.addEventListener('click', () => {
+						const stopsRoot = listEl.closest('.admin-stops');
 						closeStopEditors(listEl);
-						closeAddStopPanel(listEl.closest('.admin-stops'));
+						closeAddStopPanel(stopsRoot);
 						const already = block.classList.contains('is-editing');
 						if (already) return;
 						block.classList.add('is-editing');
+						stopsRoot?.classList.add('is-editing-stop');
 						const editor = block.querySelector('.admin-row__editor');
 						if (!editor) return;
 						editor.hidden = false;
 						mountStopForm(editor, tripId, item, 'edit', () => {
 							closeStopEditors(listEl);
+							stopsRoot?.classList.remove('is-editing-stop');
 						});
 					});
 
@@ -835,6 +977,7 @@ const countries = authorized
 				listEl.querySelectorAll('.admin-stop-block.is-editing').forEach((el) => {
 					el.classList.remove('is-editing');
 				});
+				listEl.closest('.admin-stops')?.classList.remove('is-editing-stop');
 			}
 
 			/** @param {HTMLElement | null} stopsRoot */
@@ -972,25 +1115,51 @@ const countries = authorized
 					return;
 				}
 
-				tripListEl.innerHTML = tripsCache
-					.map(
-						(trip) => `
+				const staging = document.createElement('div');
+				staging.innerHTML = tripsCache
+					.map((trip) => {
+						const hasCover = Boolean(trip.image_url);
+						const stopCount =
+							typeof trip.stop_count === 'number'
+								? trip.stop_count
+								: stopsByTrip[trip.id]?.length;
+						const stopMeta =
+							typeof stopCount === 'number' ? ` · ${stopCount} stop${stopCount === 1 ? '' : 's'}` : '';
+						const draftBadge = trip.published
+							? ''
+							: ' <span class="badge badge--draft">draft</span>';
+						const summary = escapeHtml(String(trip.summary || '').trim());
+						const media = hasCover
+							? `<div class="rec-item__media trip-card__media" aria-hidden="true">
+									<img
+										src="${escapeHtml(trip.image_url)}"
+										alt=""
+										width="210"
+										height="140"
+										loading="lazy"
+										decoding="async"
+									/>
+								</div>`
+							: '';
+						return `
 					<div class="admin-row-block admin-trip-block" data-id="${escapeHtml(trip.id)}">
-						<div class="admin-row">
-							<div class="admin-row__title">${escapeHtml(trip.title)}</div>
-							<div class="admin-row__meta">
-								${trip.published ? 'published' : '<span class="badge badge--draft">draft</span>'} · ${escapeHtml(trip.created_at)}
-							</div>
+						<article class="rec-item trip-card admin-trip-card${hasCover ? ' rec-item--with-cover trip-card--with-cover' : ''}">
+							${media}
+							<p class="rec-item__meta">Trip${stopMeta}${draftBadge}</p>
+							<h3 class="rec-item__title">${escapeHtml(trip.title)}</h3>
+							${summary ? `<p class="rec-item__summary">${summary}</p>` : ''}
 							<div class="admin-row__actions">
 								<button class="btn btn--primary" type="button" data-action="manage">Manage stops</button>
 								<button class="btn btn--ghost" type="button" data-action="edit">Edit</button>
 								<button class="btn btn--danger" type="button" data-action="delete">Delete</button>
 							</div>
-						</div>
+						</article>
 						<div class="admin-row__editor admin-expand" hidden></div>
-					</div>`,
-					)
+					</div>`;
+					})
 					.join('');
+
+				tripListEl.replaceChildren(...staging.childNodes);
 
 				tripListEl.querySelectorAll('.admin-trip-block').forEach((block) => {
 					const id = block.dataset.id;

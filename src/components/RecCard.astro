@@ -9,10 +9,11 @@ import {
 
 interface Props {
 	item: Recommendation;
+	/** When true, card stays out of view until infinite-scroll reveals it. */
+	deferred?: boolean;
 }
 
-const { item } = Astro.props;
-const label = item.type === 'book' ? 'Book' : 'Movie';
+const { item, deferred = false } = Astro.props;
 const creatorLabel = item.type === 'book' ? 'Author' : 'Director';
 const whenLabel = item.type === 'book' ? 'Read' : 'Watched';
 const coverKind = item.type === 'book' ? 'Cover' : 'Poster';
@@ -28,7 +29,7 @@ const blurb = item.commentary?.trim() || '';
 const blurbShort = blurb.length > 220 ? `${blurb.slice(0, 217).trimEnd()}…` : blurb;
 ---
 
-<article class:list={['rec-item', hasCover && 'rec-item--with-cover']}>
+<article class:list={['rec-item', hasCover && 'rec-item--with-cover']} hidden={deferred || undefined}>
 	{
 		hasCover && (
 			<a class="rec-item__media" href={detailHref}>
@@ -43,7 +44,7 @@ const blurbShort = blurb.length > 220 ? `${blurb.slice(0, 217).trimEnd()}…` : 
 			</a>
 		)
 	}
-	<p class="rec-item__meta">{label}{genreBrief ? ` · ${genreBrief}` : ''}</p>
+	{genreBrief && <p class="rec-item__meta">{genreBrief}</p>}
 	<h3 class="rec-item__title">
 		<a class="rec-item__title-link" href={detailHref}>{item.title}</a>
 	</h3>

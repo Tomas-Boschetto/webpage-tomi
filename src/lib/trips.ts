@@ -19,11 +19,20 @@ export async function listPublishedTrips(db: D1Database): Promise<Trip[]> {
 	return results ?? [];
 }
 
-export async function listAllTrips(db: D1Database): Promise<Trip[]> {
+export async function listAllTrips(db: D1Database): Promise<(Trip & { stop_count: number })[]> {
 	const { results } = await db
-		.prepare(`SELECT * FROM trips ORDER BY created_at DESC`)
-		.all<Trip>();
-	return results ?? [];
+		.prepare(
+			`SELECT t.*, (
+				SELECT COUNT(*) FROM itinerary_items i WHERE i.trip_id = t.id
+			) AS stop_count
+			 FROM trips t
+			 ORDER BY t.created_at DESC`,
+		)
+		.all<Trip & { stop_count: number }>();
+	return (results ?? []).map((row) => ({
+		...row,
+		stop_count: Number(row.stop_count) || 0,
+	}));
 }
 
 export async function getTripById(db: D1Database, id: string): Promise<Trip | null> {
