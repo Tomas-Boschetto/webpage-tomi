@@ -6,7 +6,7 @@ import type {
 	TripWithItems,
 } from './types';
 import { isPlaceType } from './types';
-import { emptyToNull, isSafeHttpUrl } from './validate';
+import { emptyToNull, isSafeHttpUrl, isSafeImageUrl } from './validate';
 
 export async function listPublishedTrips(db: D1Database): Promise<Trip[]> {
 	const { results } = await db
@@ -287,8 +287,8 @@ export function parseTripInput(body: unknown): TripInput | { error: string } {
 		if (typeof image_url !== 'string') {
 			return { error: 'image_url must be a string' };
 		}
-		if (image_url.trim() && !isSafeHttpUrl(image_url)) {
-			return { error: 'image_url must be an http(s) URL' };
+		if (image_url.trim() && !isSafeImageUrl(image_url)) {
+			return { error: 'image_url must be an http(s) URL or /media/… path' };
 		}
 		if (image_url.trim().length > 500) {
 			return { error: 'image_url max 500 chars' };

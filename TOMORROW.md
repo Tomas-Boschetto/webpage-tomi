@@ -38,9 +38,9 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 
 ## Product / UX polish (from earlier)
 
-- [ ] Trip cover: option to **use a stop photo as the trip cover** (no Unsplash required)
-- [ ] Travel list cards: tighten spacing / cover sizing now that covers exist
-- [ ] Public trip page: photo placement/size polish next to notes and map
+- [x] Trip cover: option to **use a stop photo as the trip cover** (no Unsplash required)
+- [x] Travel list cards: tighten spacing / cover sizing now that covers exist
+- [x] Public trip page: photo placement/size polish next to notes and map
 
 ## Optional later (not required tomorrow)
 
