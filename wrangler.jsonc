@@ -27,6 +27,7 @@
 	],
 	"vars": {
 		"SITE_NAME": "Tomas Boschetto",
-		"LINKEDIN_URL": "https://www.linkedin.com/in/tomasboschetto/"
+		"LINKEDIN_URL": "https://www.linkedin.com/in/tomasboschetto/",
+		"SITE_URL": "https://tomasboschetto.com"
 	}
 }

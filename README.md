@@ -44,6 +44,7 @@ In `wrangler.jsonc` → `vars`:
 
 - `SITE_NAME`
 - `LINKEDIN_URL`
+- `SITE_URL` — canonical origin for sitemap / Open Graph (default `https://tomasboschetto.com`)
 
 Secrets (`.dev.vars` locally, Cloudflare dashboard in production — never commit these):
 

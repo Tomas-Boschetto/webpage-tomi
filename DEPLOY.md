@@ -117,4 +117,17 @@ In Cloudflare for your domain:
 - Enable **Bot Fight Mode** (or Super Bot Fight Mode on paid plans)
 - Optional: WAF rate limiting on `/api/contact`
 
+## 10. SEO / Google Search Console
+
+Technical SEO is built into the site (canonical URLs, Open Graph, `/sitemap.xml`, structured data on the home page). To appear in Google:
+
+1. Confirm https://tomasboschetto.com/sitemap.xml loads
+2. Open [Google Search Console](https://search.google.com/search-console)
+3. Add the property for `https://tomasboschetto.com`
+4. Verify ownership (DNS TXT via Cloudflare, or HTML meta if you prefer)
+5. Submit the sitemap URL: `https://tomasboschetto.com/sitemap.xml`
+6. Use **URL Inspection** on the homepage and request indexing
+
+Ranking still depends on unique content, links, and time — the site must be crawlable first.
+
 Public recommendation HTML remains readable by humans; Cloudflare reduces automated scraping and form spam.

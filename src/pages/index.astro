@@ -1,10 +1,13 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { env } from 'cloudflare:workers';
+import { getSiteUrl } from '../lib/site';
 
 export const prerender = false;
 
 const siteName = env.SITE_NAME || 'Tomas Boschetto';
+const linkedIn = env.LINKEDIN_URL || 'https://www.linkedin.com/in/tomasboschetto/';
+const siteUrl = getSiteUrl(env);
 
 const slides = [
 	{
@@ -54,9 +57,31 @@ const slides = [
 		unsplash: 'https://unsplash.com/photos/tt3K-JvHrPY',
 	},
 ];
+
+const jsonLd = [
+	{
+		'@context': 'https://schema.org',
+		'@type': 'WebSite',
+		name: siteName,
+		url: siteUrl,
+		description: 'Movies, books, and places worth your time.',
+	},
+	{
+		'@context': 'https://schema.org',
+		'@type': 'Person',
+		name: siteName,
+		url: siteUrl,
+		sameAs: [linkedIn],
+	},
+];
 ---
 
-<BaseLayout title={siteName} description="Movies, books, and places worth your time.">
+<BaseLayout
+	title={siteName}
+	description="Movies, books, and places worth your time."
+	image="/images/hero-ar.jpg"
+	jsonLd={jsonLd}
+>
 	<section class="hero" aria-label="Introduction">
 		<div class="hero__media" aria-hidden="true">
 			{

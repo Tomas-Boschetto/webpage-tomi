@@ -16,7 +16,7 @@ if (!trip) {
 
 {
 	!trip ? (
-		<BaseLayout title="Trip not found">
+		<BaseLayout title="Trip not found" robots="noindex, follow">
 			<header class="section-head">
 				<h1>Trip not found</h1>
 				<p>
@@ -25,7 +25,11 @@ if (!trip) {
 			</header>
 		</BaseLayout>
 	) : (
-		<BaseLayout title={trip.title} description={trip.summary}>
+		<BaseLayout
+			title={trip.title}
+			description={trip.summary}
+			image={trip.image_url || '/images/hero-ar.jpg'}
+		>
 			<header class="section-head">
 				<p class="rec-item__meta">Trip</p>
 				<h1>{trip.title}</h1>

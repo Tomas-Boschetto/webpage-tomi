@@ -10,7 +10,7 @@ const viewParam = Astro.url.searchParams.get('view');
 const view = viewParam === 'books' ? 'books' : 'movies';
 ---
 
-<BaseLayout title="Admin" description="Manage movie and book recommendations.">
+<BaseLayout title="Admin" description="Manage movie and book recommendations." robots="noindex, nofollow">
 	<header class="section-head">
 		<h1>Admin</h1>
 		<p>

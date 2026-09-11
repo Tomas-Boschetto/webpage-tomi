@@ -1,19 +1,35 @@
 ---
 import '../styles/global.css';
 import { env } from 'cloudflare:workers';
+import { absoluteUrl, getSiteUrl } from '../lib/site';
 
 interface Props {
 	title?: string;
 	description?: string;
+	/** Absolute or site-relative image for Open Graph / Twitter. */
+	image?: string;
+	/** Override robots when a page should stay out of search (e.g. admin). */
+	robots?: string;
+	/** Optional JSON-LD object(s) for structured data. */
+	jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
 const siteName = env.SITE_NAME || 'Tomas Boschetto';
 const linkedIn = env.LINKEDIN_URL || 'https://www.linkedin.com/in/tomasboschetto/';
-const { title = siteName, description = 'Personal movie, book, and travel recommendations.' } =
-	Astro.props;
+const siteUrl = getSiteUrl(env);
+const {
+	title = siteName,
+	description = 'Personal movie, book, and travel recommendations.',
+	image = '/images/hero-ar.jpg',
+	robots = 'index, follow',
+	jsonLd,
+} = Astro.props;
 const pageTitle = title === siteName ? siteName : `${title} · ${siteName}`;
 const path = Astro.url.pathname;
+const canonical = absoluteUrl(siteUrl, path === '/' ? '/' : path.replace(/\/+$/, '') || '/');
+const ogImage = absoluteUrl(siteUrl, image);
 const year = new Date().getFullYear();
+const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 ---
 
 <!doctype html>
@@ -27,7 +43,28 @@ const year = new Date().getFullYear();
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="generator" content={Astro.generator} />
 		<meta name="description" content={description} />
-		<meta name="robots" content="index, follow" />
+		<meta name="robots" content={robots} />
+		<link rel="canonical" href={canonical} />
+
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content={siteName} />
+		<meta property="og:title" content={pageTitle} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonical} />
+		<meta property="og:image" content={ogImage} />
+		<meta property="og:locale" content="en_US" />
+
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content={pageTitle} />
+		<meta name="twitter:description" content={description} />
+		<meta name="twitter:image" content={ogImage} />
+
+		{
+			jsonLdBlocks.map((block) => (
+				<script type="application/ld+json" set:html={JSON.stringify(block)} />
+			))
+		}
+
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -56,7 +93,7 @@ const year = new Date().getFullYear();
 				</nav>
 			</div>
 		</header>
-		<main class="site-main">
+		<main class="site-main" id="main">
 			<slot />
 		</main>
 		<footer class="site-footer">
