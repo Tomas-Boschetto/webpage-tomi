@@ -60,13 +60,7 @@ const countries = authorized
 					data-place-types={JSON.stringify(placeTypeOptions)}
 					data-transport-modes={JSON.stringify(transportModeOptions)}
 				>
-					<section class="admin-panel">
-						<div class="admin-list" id="trip-list">
-							<p class="empty">Loading…</p>
-						</div>
-					</section>
-
-					<section class="admin-add">
+					<section class="admin-add admin-add--leading">
 						<button class="btn btn--primary" type="button" id="add-trip-toggle" aria-expanded="false">
 							Add trip
 						</button>
@@ -74,6 +68,12 @@ const countries = authorized
 							<div id="add-trip-form-host"></div>
 						</div>
 						<p class="form__status" id="trip-status" role="status" aria-live="polite"></p>
+					</section>
+
+					<section class="admin-panel">
+						<div class="admin-list" id="trip-list">
+							<p class="empty">Loading…</p>
+						</div>
 					</section>
 				</div>
 			</>
@@ -334,6 +334,72 @@ const countries = authorized
 				addTripPanel.hidden = true;
 				addTripFormHost.innerHTML = '';
 				addTripToggle.setAttribute('aria-expanded', 'false');
+				addTripToggle.textContent = 'Add trip';
+			}
+
+			function openAddTripPanel() {
+				if (!addTripPanel || !addTripToggle || !addTripFormHost) return;
+				closeAllTripEditors();
+				addTripPanel.hidden = false;
+				addTripToggle.setAttribute('aria-expanded', 'true');
+				addTripToggle.textContent = 'Cancel';
+				setTripStatus('');
+				mountTripForm(addTripFormHost, null, 'create', () => closeAddTripPanel());
+				addTripPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+			}
+
+			/**
+			 * @param {string} tripId
+			 * @param {number} stopCount
+			 */
+			function syncTripStopCount(tripId, stopCount) {
+				const trip = tripsCache.find((t) => t.id === tripId);
+				if (trip) trip.stop_count = stopCount;
+				const block = document.querySelector(`.admin-trip-block[data-id="${CSS.escape(tripId)}"]`);
+				if (!block) return;
+				const card = block.querySelector('.admin-trip-card');
+				if (!card) return;
+
+				const draft = trip && !trip.published;
+				const stopMeta = `${stopCount} stop${stopCount === 1 ? '' : 's'}`;
+				const metaHtml = draft
+					? `${escapeHtml(stopMeta)} · <span class="badge badge--draft">draft</span>`
+					: escapeHtml(stopMeta);
+
+				let meta = card.querySelector('.rec-item__meta');
+				if (!meta) {
+					meta = document.createElement('p');
+					meta.className = 'rec-item__meta';
+					const title = card.querySelector('.rec-item__title');
+					if (title) card.insertBefore(meta, title);
+					else card.prepend(meta);
+				}
+				meta.innerHTML = metaHtml;
+			}
+
+			/**
+			 * @param {string} tripId
+			 * @param {{ openAddStop?: boolean, scroll?: boolean }} [opts]
+			 */
+			async function openManageStops(tripId, opts = {}) {
+				const { openAddStop = false, scroll = true } = opts;
+				closeAddTripPanel();
+				const already =
+					document.querySelector(`.admin-trip-block[data-id="${CSS.escape(tripId)}"].is-managing`) !=
+					null;
+				closeAllTripEditors();
+				if (already && !openAddStop) return;
+
+				const block = document.querySelector(`.admin-trip-block[data-id="${CSS.escape(tripId)}"]`);
+				const editor = block?.querySelector('.admin-row__editor');
+				if (!block || !editor) return;
+
+				block.classList.add('is-managing');
+				history.replaceState({}, '', `/admin/trips?trip=${encodeURIComponent(tripId)}`);
+				await mountManagePanel(editor, tripId, { openAddStop });
+				if (scroll) {
+					block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
 			}
 
 			function closeAllTripEditors() {
@@ -736,7 +802,9 @@ const countries = authorized
 					setTripStatus(editingId ? 'Trip updated.' : 'Trip created.');
 					onCancel();
 					await loadTrips();
-					if (!editingId && json.id) await openManageStops(json.id);
+					if (!editingId && json.id) {
+						await openManageStops(json.id, { openAddStop: true, scroll: true });
+					}
 				});
 
 				void loadStopCoverChoices();
@@ -977,6 +1045,8 @@ const countries = authorized
 					onDone();
 					await refreshManagePanel(tripId);
 					await refreshAdminPlanisphere();
+					const stops = stopsByTrip[tripId] || [];
+					syncTripStopCount(tripId, stops.length);
 				});
 			}
 
@@ -1059,6 +1129,8 @@ const countries = authorized
 						setTripStatus('Stop deleted.');
 						await refreshManagePanel(tripId);
 						await refreshAdminPlanisphere();
+						const stops = stopsByTrip[tripId] || [];
+						syncTripStopCount(tripId, stops.length);
 					});
 				});
 			}
@@ -1088,6 +1160,7 @@ const countries = authorized
 				}
 				if (panel) panel.hidden = true;
 				toggle?.setAttribute('aria-expanded', 'false');
+				if (toggle) toggle.textContent = 'Add stop';
 			}
 
 			async function refreshManagePanel(tripId) {
@@ -1101,8 +1174,10 @@ const countries = authorized
 			/**
 			 * @param {HTMLElement} editor
 			 * @param {string} tripId
+			 * @param {{ openAddStop?: boolean }} [opts]
 			 */
-			async function mountManagePanel(editor, tripId) {
+			async function mountManagePanel(editor, tripId, opts = {}) {
+				const { openAddStop = false } = opts;
 				editor.querySelectorAll('.admin-map-picker__map, .admin-stops__map').forEach((mapEl) =>
 					destroyLeafletMap(mapEl),
 				);
@@ -1114,6 +1189,8 @@ const countries = authorized
 					editor.innerHTML = '<p class="form__status form__status--err">Failed to load stops.</p>';
 					return;
 				}
+
+				syncTripStopCount(tripId, stops.length);
 
 				editor.hidden = false;
 				editor.innerHTML = `
@@ -1142,48 +1219,48 @@ const countries = authorized
 				const addHost = editor.querySelector('[data-add-stop-host]');
 				const closeBtn = editor.querySelector('[data-collapse-stops]');
 
-				if (overviewEl) {
-					await mountOverviewMap(
-						overviewEl,
-						stops.map((s) => ({ lat: s.lat, lng: s.lng, name: s.place_name })),
-					);
-				}
 				if (listEl) renderStopList(listEl, tripId, stops);
+
+				if (overviewEl) {
+					try {
+						await mountOverviewMap(
+							overviewEl,
+							stops.map((s) => ({ lat: s.lat, lng: s.lng, name: s.place_name })),
+						);
+					} catch {
+						overviewEl.innerHTML =
+							'<p class="form__status form__status--err">Map failed to load. Stops still listed below.</p>';
+					}
+				}
 
 				closeBtn?.addEventListener('click', () => {
 					closeAllTripEditors();
 				});
 
-				addToggle?.addEventListener('click', () => {
-					if (!listEl || !addPanel || !addHost) return;
+				const openAddStopPanel = () => {
+					if (!listEl || !addPanel || !addHost || !addToggle) return;
 					closeStopEditors(listEl);
-					if (!addPanel.hidden) {
-						closeAddStopPanel(editor.querySelector('.admin-stops'));
-						return;
-					}
 					addPanel.hidden = false;
 					addToggle.setAttribute('aria-expanded', 'true');
+					addToggle.textContent = 'Cancel';
 					mountStopForm(addHost, tripId, null, 'create', () => {
 						closeAddStopPanel(editor.querySelector('.admin-stops'));
+						addToggle.textContent = 'Add stop';
 					});
+					addPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+				};
+
+				addToggle?.addEventListener('click', () => {
+					if (!addPanel) return;
+					if (!addPanel.hidden) {
+						closeAddStopPanel(editor.querySelector('.admin-stops'));
+						addToggle.textContent = 'Add stop';
+						return;
+					}
+					openAddStopPanel();
 				});
-			}
 
-			async function openManageStops(tripId) {
-				closeAddTripPanel();
-				const already =
-					document.querySelector(`.admin-trip-block[data-id="${CSS.escape(tripId)}"].is-managing`) !=
-					null;
-				closeAllTripEditors();
-				if (already) return;
-
-				const block = document.querySelector(`.admin-trip-block[data-id="${CSS.escape(tripId)}"]`);
-				const editor = block?.querySelector('.admin-row__editor');
-				if (!block || !editor) return;
-
-				block.classList.add('is-managing');
-				history.replaceState({}, '', `/admin/trips?trip=${encodeURIComponent(tripId)}`);
-				await mountManagePanel(editor, tripId);
+				if (openAddStop) openAddStopPanel();
 			}
 
 			function openEditTrip(tripId) {
@@ -1311,22 +1388,18 @@ const countries = authorized
 			}
 
 			addTripToggle?.addEventListener('click', () => {
-				closeAllTripEditors();
-				if (!addTripPanel || !addTripFormHost) return;
+				if (!addTripPanel) return;
 				if (!addTripPanel.hidden) {
 					closeAddTripPanel();
 					return;
 				}
-				addTripPanel.hidden = false;
-				addTripToggle.setAttribute('aria-expanded', 'true');
-				setTripStatus('');
-				mountTripForm(addTripFormHost, null, 'create', () => closeAddTripPanel());
+				openAddTripPanel();
 			});
 
 			(async () => {
 				await loadTrips();
 				if (preselect && tripsCache.some((t) => t.id === preselect)) {
-					await openManageStops(preselect);
+					await openManageStops(preselect, { scroll: true });
 				}
 			})();
 		</script>

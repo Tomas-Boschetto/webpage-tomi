@@ -44,6 +44,11 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 - [x] Travel list cards: tighten spacing / cover sizing now that covers exist
 - [x] Public trip page: photo placement/size polish next to notes and map
 
+## Google Cloud (reminders)
+
+- [ ] **Google Cloud subscription** — dig into billing/plan: free tier vs paid, what triggers charges, quotas, and how Places usage shows up in the console
+- [ ] **API key hardening** — revise protections (restrict key to Places API (New) only, HTTP referrer / IP limits if useful for a Worker, budget alerts, rotate key if needed)
+
 ## Optional later (not required tomorrow)
 
 - Multi-photo gallery per stop

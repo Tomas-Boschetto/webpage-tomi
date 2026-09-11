@@ -1868,6 +1868,12 @@ p {
 	margin-top: 0.25rem;
 }
 
+.admin-add--leading {
+	padding-top: 0;
+	margin-top: 0;
+	margin-bottom: 0.25rem;
+}
+
 .admin-add .admin-expand {
 	border-bottom: none;
 	padding-bottom: 0;
