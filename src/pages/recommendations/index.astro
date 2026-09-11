@@ -30,6 +30,13 @@ const activeType: RecommendationType | undefined = isRecommendationType(typePara
 	? typeParam
 	: undefined;
 
+// No combined “All” view — always land on a specific section.
+if (!showTravel && !activeType) {
+	const next = new URL(Astro.url);
+	next.searchParams.set('type', 'movie');
+	return Astro.redirect(`${next.pathname}?${next.searchParams.toString()}`);
+}
+
 const genreParam = Astro.url.searchParams.get('genre')?.trim() || '';
 const awardParam = Astro.url.searchParams.get('award')?.trim() || '';
 const authorParam = Astro.url.searchParams.get('author')?.trim() || '';
@@ -44,9 +51,9 @@ const tripSort = parseTripSort(sortParam);
 const allMedia = showTravel ? [] : await listPublished(env.DB, activeType);
 const genres = extractGenres(allMedia);
 const awardInstitutions = extractAccoladeInstitutions(allMedia);
-const authors = extractAuthors(allMedia);
-const directors = extractDirectors(allMedia);
-const actors = extractActors(allMedia);
+const authors = activeType === 'book' ? extractAuthors(allMedia) : [];
+const directors = activeType === 'movie' ? extractDirectors(allMedia) : [];
+const actors = activeType === 'movie' ? extractActors(allMedia) : [];
 const mediaItems = filterAndSortRecommendations(allMedia, {
 	genre: genreParam || null,
 	award: awardParam || null,
@@ -57,18 +64,7 @@ const mediaItems = filterAndSortRecommendations(allMedia, {
 	sort: recSort,
 });
 
-const allTrips = showTravel
-	? await listPublishedTrips(env.DB)
-	: !activeType
-		? genreParam ||
-			  awardParam ||
-			  authorParam ||
-			  directorParam ||
-			  actorParam ||
-			  minRating != null
-			? []
-			: await listPublishedTrips(env.DB)
-		: [];
+const allTrips = showTravel ? await listPublishedTrips(env.DB) : [];
 
 const countries = showTravel ? await listCountriesFromPublishedStops(env.DB) : [];
 const countryFilterValid =
@@ -80,7 +76,7 @@ if (showTravel && countryFilterValid) {
 	rawTrips = allTrips.filter((trip) => tripIds.has(trip.id));
 }
 
-const trips = sortTrips(rawTrips, showTravel || !activeType ? tripSort : 'newest');
+const trips = sortTrips(rawTrips, tripSort);
 
 const tripCards = await Promise.all(
 	trips.map(async (trip) => {
@@ -100,20 +96,17 @@ const tripCards = await Promise.all(
 	}),
 );
 
-function hrefForType(type: string | null) {
-	return type ? `/recommendations?type=${type}` : '/recommendations';
+function hrefForType(type: 'movie' | 'book' | 'travel') {
+	return `/recommendations?type=${type}`;
 }
 
 const tabs = [
-	{ label: 'All', href: hrefForType(null), current: !typeParam },
 	{ label: 'Movies', href: hrefForType('movie'), current: activeType === 'movie' },
 	{ label: 'Books', href: hrefForType('book'), current: activeType === 'book' },
 	{ label: 'Travel', href: hrefForType('travel'), current: showTravel },
 ];
 
-const empty = showTravel
-	? tripCards.length === 0
-	: mediaItems.length === 0 && tripCards.length === 0;
+const empty = showTravel ? tripCards.length === 0 : mediaItems.length === 0;
 
 const showMediaToolbar = !showTravel && allMedia.length > 0;
 const showTravelToolbar = showTravel && allTrips.length > 0;
@@ -130,12 +123,18 @@ const showUnsplashCredit = coverSources.has('unsplash');
 const showWikidataCredit = mediaItems.some(
 	(item) => accoladesSource(item.accolades) === 'wikidata',
 );
+
+const sectionBlurb = showTravel
+	? 'Trips and places I’ve been.'
+	: activeType === 'book'
+		? 'Books I’ve read and recommend.'
+		: 'Films I’ve watched and recommend.';
 ---
 
 <BaseLayout title="Recommendations" description="Movie, book, and travel recommendations.">
 	<header class="section-head">
 		<h1>Recommendations</h1>
-		<p>Filter by type, or browse everything.</p>
+		<p>{sectionBlurb}</p>
 	</header>
 
 	<nav class="tabs" aria-label="Recommendation types">
@@ -164,7 +163,7 @@ const showWikidataCredit = mediaItems.some(
 					</select>
 				</label>
 				{
-					(activeType === 'book' || !activeType) && authors.length > 0 && (
+					activeType === 'book' && authors.length > 0 && (
 						<label class="rec-toolbar__field">
 							<span>Author</span>
 							<select name="author">
@@ -179,7 +178,7 @@ const showWikidataCredit = mediaItems.some(
 					)
 				}
 				{
-					(activeType === 'movie' || !activeType) && directors.length > 0 && (
+					activeType === 'movie' && directors.length > 0 && (
 						<label class="rec-toolbar__field">
 							<span>Director</span>
 							<select name="director">
@@ -194,7 +193,7 @@ const showWikidataCredit = mediaItems.some(
 					)
 				}
 				{
-					(activeType === 'movie' || !activeType) && actors.length > 0 && (
+					activeType === 'movie' && actors.length > 0 && (
 						<label class="rec-toolbar__field">
 							<span>Actor</span>
 							<select name="actor">
@@ -326,9 +325,6 @@ const showWikidataCredit = mediaItems.some(
 				<div class="rec-list">
 					{mediaItems.map((item) => (
 						<RecCard item={item} />
-					))}
-					{tripCards.map(({ trip, stopCount, countryCodes }) => (
-						<TripCard trip={trip} stopCount={stopCount} countryCodes={countryCodes} />
 					))}
 				</div>
 				{(showTmdbCredit || showOpenLibraryCredit || showUnsplashCredit || showWikidataCredit) && (
