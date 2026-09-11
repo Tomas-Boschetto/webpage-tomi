@@ -19,5 +19,9 @@ TMDB_API_KEY=
 # Optional: OMDb for IMDb community ratings on movie lookup (https://www.omdbapi.com/apikey.aspx)
 OMDB_API_KEY=
 
+# Google Maps Platform (admin place search — Places API Text Search)
+# Enable Places API (New) on the key: https://console.cloud.google.com/google/maps-apis
+GOOGLE_MAPS_API_KEY=
+
 # Unsplash (trip cover lookup in /admin/trips — https://unsplash.com/oauth/applications)
 UNSPLASH_ACCESS_KEY=

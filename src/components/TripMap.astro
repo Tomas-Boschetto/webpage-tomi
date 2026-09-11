@@ -1,32 +1,105 @@
 ---
-import type { ItineraryItem } from '../lib/types';
-import { PLACE_TYPE_LABELS } from '../lib/types';
+import type { ItineraryItem, TransportMode } from '../lib/types';
+import {
+	PLACE_TYPE_LABELS,
+	TRANSPORT_MODE_LABELS,
+	TRANSPORT_MODE_MAP_STYLE,
+	isTransportMode,
+} from '../lib/types';
 
 interface Props {
 	items: ItineraryItem[];
+	tripTitle: string;
 }
 
-const { items } = Astro.props;
+const { items, tripTitle } = Astro.props;
 const mappable = items.filter((i) => i.lat != null && i.lng != null);
-const payload = mappable.map((i) => ({
-	id: i.id,
-	name: i.place_name,
-	type: PLACE_TYPE_LABELS[i.place_type],
-	lat: i.lat as number,
-	lng: i.lng as number,
+const payload = mappable.map((i) => {
+	const mode: TransportMode = isTransportMode(i.transport_mode) ? i.transport_mode : 'other';
+	return {
+		id: i.id,
+		name: i.place_name,
+		type: PLACE_TYPE_LABELS[i.place_type],
+		mode,
+		modeLabel: TRANSPORT_MODE_LABELS[mode],
+		lat: i.lat as number,
+		lng: i.lng as number,
+	};
+});
+
+const modesUsed = [
+	...new Set(
+		payload.slice(1).map((s) => s.mode), // segment style uses arrival stop's mode
+	),
+] as TransportMode[];
+
+const legend = modesUsed.map((mode) => ({
+	mode,
+	label: TRANSPORT_MODE_LABELS[mode],
+	...TRANSPORT_MODE_MAP_STYLE[mode],
 }));
+
+const styleByMode = Object.fromEntries(
+	Object.entries(TRANSPORT_MODE_MAP_STYLE).map(([mode, style]) => [mode, style]),
+);
+
+const googleMapsDirUrl =
+	mappable.length > 0
+		? `https://www.google.com/maps/dir/${mappable
+				.map((i) => `${i.lat},${i.lng}`)
+				.join('/')}`
+		: '';
 ---
 
 {
 	mappable.length > 0 && (
 		<section class="trip-map-wrap" aria-label="Trip map">
-			<h2 class="trip-map__title">Map</h2>
-			<p class="trip-map__lead">Click a pin to jump to that stop in the itinerary.</p>
+			<div class="trip-map__header">
+				<div>
+					<h2 class="trip-map__title">Map</h2>
+					<p class="trip-map__lead">
+						Lines show how I moved between stops. Click a pin to jump to that stop.
+					</p>
+				</div>
+				<div class="trip-export">
+					{googleMapsDirUrl && (
+						<a
+							class="btn btn--ghost trip-export__btn"
+							href={googleMapsDirUrl}
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							Open in Google Maps
+						</a>
+					)}
+					<button class="btn btn--ghost trip-export__btn" type="button" data-gpx-download>
+						Download GPX
+					</button>
+				</div>
+			</div>
 			<div
 				class="trip-map"
 				id="trip-map"
 				data-stops={JSON.stringify(payload)}
+				data-styles={JSON.stringify(styleByMode)}
+				data-trip-title={tripTitle}
 			/>
+			{
+				legend.length > 0 && (
+					<ul class="trip-map__legend" aria-label="Transport modes on this map">
+						{legend.map((entry) => (
+							<li>
+								<span
+									class="trip-map__legend-swatch"
+									style={`background:${entry.color};${entry.dashArray ? `background-image:repeating-linear-gradient(90deg,${entry.color} 0 6px,transparent 6px 10px);background-color:transparent;border-bottom:3px solid ${entry.color};` : ''}`}
+									aria-hidden="true"
+								/>
+								{entry.label}
+							</li>
+						))}
+					</ul>
+				)
+			}
 		</section>
 	)
 }
@@ -45,12 +118,14 @@ const payload = mappable.map((i) => ({
 					var root = document.getElementById('trip-map');
 					if (!root || !window.L) return;
 					var stops = JSON.parse(root.getAttribute('data-stops') || '[]');
+					var styles = JSON.parse(root.getAttribute('data-styles') || '{}');
+					var tripTitle = root.getAttribute('data-trip-title') || 'Trip';
 					if (!stops.length) return;
 
 					var map = window.L.map(root, { scrollWheelZoom: false });
-					// Free OSM raster tiles — no API key required
 					window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-						attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+						attribution:
+							'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 						maxZoom: 19,
 					}).addTo(map);
 
@@ -65,6 +140,7 @@ const payload = mappable.map((i) => ({
 								stop.name +
 								'</strong><br/>' +
 								stop.type +
+								(index > 0 ? '<br/>Arrived by: ' + stop.modeLabel : '') +
 								'<br/><a href="#stop-' +
 								stop.id +
 								'">View in itinerary</a>',
@@ -80,6 +156,23 @@ const payload = mappable.map((i) => ({
 						});
 						markers[stop.id] = marker;
 						bounds.push([stop.lat, stop.lng]);
+
+						if (index > 0) {
+							var prev = stops[index - 1];
+							var style = styles[stop.mode] || styles.other || { color: '#9a9588', weight: 3 };
+							window.L.polyline(
+								[
+									[prev.lat, prev.lng],
+									[stop.lat, stop.lng],
+								],
+								{
+									color: style.color,
+									weight: style.weight || 3,
+									dashArray: style.dashArray || null,
+									opacity: 0.9,
+								},
+							).addTo(map);
+						}
 					});
 
 					if (bounds.length === 1) {
@@ -101,6 +194,61 @@ const payload = mappable.map((i) => ({
 							marker.openPopup();
 						});
 					});
+
+					var gpxBtn = document.querySelector('[data-gpx-download]');
+					gpxBtn &&
+						gpxBtn.addEventListener('click', function () {
+							function esc(s) {
+								return String(s)
+									.replace(/&/g, '&amp;')
+									.replace(/</g, '&lt;')
+									.replace(/>/g, '&gt;')
+									.replace(/"/g, '&quot;');
+							}
+							var wpts = stops
+								.map(function (stop) {
+									return (
+										'<wpt lat="' +
+										stop.lat +
+										'" lon="' +
+										stop.lng +
+										'"><name>' +
+										esc(stop.name) +
+										'</name><desc>' +
+										esc(stop.type) +
+										'</desc></wpt>'
+									);
+								})
+								.join('');
+							var trkpts = stops
+								.map(function (stop) {
+									return '<trkpt lat="' + stop.lat + '" lon="' + stop.lng + '"></trkpt>';
+								})
+								.join('');
+							var gpx =
+								'<?xml version="1.0" encoding="UTF-8"?>' +
+								'<gpx version="1.1" creator="WebPage Tomi" xmlns="http://www.topografix.com/GPX/1/1">' +
+								'<metadata><name>' +
+								esc(tripTitle) +
+								'</name></metadata>' +
+								wpts +
+								'<trk><name>' +
+								esc(tripTitle) +
+								'</name><trkseg>' +
+								trkpts +
+								'</trkseg></trk></gpx>';
+							var blob = new Blob([gpx], { type: 'application/gpx+xml' });
+							var url = URL.createObjectURL(blob);
+							var a = document.createElement('a');
+							a.href = url;
+							a.download =
+								(String(tripTitle)
+									.toLowerCase()
+									.replace(/[^a-z0-9]+/g, '-')
+									.replace(/^-|-$/g, '') || 'trip') + '.gpx';
+							a.click();
+							URL.revokeObjectURL(url);
+						});
 				})();
 			</script>
 		</>

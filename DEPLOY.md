@@ -46,6 +46,7 @@ In the Worker/Pages project → **Settings → Variables and Secrets**, set:
 | `RESEND_API_KEY` | secret | From Resend |
 | `TMDB_API_KEY` | **secret** | From [TMDB API settings](https://www.themoviedb.org/settings/api) — movie metadata + poster lookup in admin |
 | `OMDB_API_KEY` | secret (optional) | From [OMDb](https://www.omdbapi.com/apikey.aspx) — IMDb community ratings on movie lookup |
+| `GOOGLE_MAPS_API_KEY` | secret (optional) | Google Maps Platform — Places API (New) Text Search for admin stop lookup; falls back to Nominatim if unset |
 | `UNSPLASH_ACCESS_KEY` | **secret** | From [Unsplash developers](https://unsplash.com/oauth/applications) — trip cover lookup |
 
 Do **not** set `ADMIN_DEV_BYPASS=true` in production.
@@ -111,6 +112,13 @@ Book data and covers use Open Library (no API key). Lookup also fills Wikipedia,
 2. Copy the **Access Key**
 3. Set `UNSPLASH_ACCESS_KEY` as a secret (and in `.dev.vars` locally)
 4. In `/admin/trips`, edit a trip and use **Fetch photo (Unsplash)**
+
+## 8b. Google Places (admin stop search)
+
+1. In [Google Cloud Console](https://console.cloud.google.com/google/maps-apis), enable **Places API (New)**
+2. Create an API key (restrict to Places API; set a billing budget alert)
+3. Set `GOOGLE_MAPS_API_KEY` in `.dev.vars` and production: `npx wrangler secret put GOOGLE_MAPS_API_KEY`
+4. Admin stop search then uses Google Text Search; without the key it falls back to Nominatim
 
 ## 9. Bot protection
 

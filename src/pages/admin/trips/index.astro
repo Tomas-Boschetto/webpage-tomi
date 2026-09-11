@@ -4,7 +4,7 @@ import Planisphere from '../../../components/Planisphere.astro';
 import { env } from 'cloudflare:workers';
 import { isAdminAuthorized } from '../../../lib/auth';
 import { listCountriesFromStops } from '../../../lib/countries';
-import { PLACE_TYPES, PLACE_TYPE_LABELS } from '../../../lib/types';
+import { PLACE_TYPES, PLACE_TYPE_LABELS, TRANSPORT_MODES, TRANSPORT_MODE_LABELS } from '../../../lib/types';
 
 export const prerender = false;
 
@@ -13,6 +13,10 @@ const preselectId = Astro.url.searchParams.get('trip') || '';
 const placeTypeOptions = PLACE_TYPES.map((type) => ({
 	value: type,
 	label: PLACE_TYPE_LABELS[type],
+}));
+const transportModeOptions = TRANSPORT_MODES.map((mode) => ({
+	value: mode,
+	label: TRANSPORT_MODE_LABELS[mode],
 }));
 const countries = authorized
 	? await listCountriesFromStops(env.DB, { publishedOnly: false })
@@ -54,6 +58,7 @@ const countries = authorized
 					id="trips-app"
 					data-preselect={preselectId}
 					data-place-types={JSON.stringify(placeTypeOptions)}
+					data-transport-modes={JSON.stringify(transportModeOptions)}
 				>
 					<section class="admin-panel">
 						<div class="admin-list" id="trip-list">
@@ -83,6 +88,8 @@ const countries = authorized
 			const preselect = app?.dataset.preselect || '';
 			/** @type {{ value: string, label: string }[]} */
 			const placeTypes = JSON.parse(app?.dataset.placeTypes || '[]');
+			/** @type {{ value: string, label: string }[]} */
+			const transportModes = JSON.parse(app?.dataset.transportModes || '[]');
 
 			const tripListEl = document.getElementById('trip-list');
 			const tripStatusEl = document.getElementById('trip-status');
@@ -91,6 +98,7 @@ const countries = authorized
 			const addTripFormHost = document.getElementById('add-trip-form-host');
 
 			const typeLabels = Object.fromEntries(placeTypes.map((t) => [t.value, t.label]));
+			const transportLabels = Object.fromEntries(transportModes.map((t) => [t.value, t.label]));
 
 			/** @type {any[]} */
 			let tripsCache = [];
@@ -353,6 +361,15 @@ const countries = authorized
 					.join('');
 			}
 
+			function transportModeOptionsHtml(selected) {
+				return transportModes
+					.map(
+						(t) =>
+							`<option value="${escapeHtml(t.value)}"${t.value === selected ? ' selected' : ''}>${escapeHtml(t.label)}</option>`,
+					)
+					.join('');
+			}
+
 			/**
 			 * @param {any | null} trip
 			 * @param {'create' | 'edit'} mode
@@ -422,6 +439,7 @@ const countries = authorized
 				const url = escapeHtml(item?.url || '');
 				const order = item?.sort_order != null ? String(item.sort_order) : '';
 				const selectedType = item?.place_type || placeTypes[0]?.value || 'other';
+				const selectedTransport = item?.transport_mode || 'other';
 				const lat = item?.lat != null ? String(item.lat) : '';
 				const lng = item?.lng != null ? String(item.lng) : '';
 				const image = escapeHtml(item?.image_url || '');
@@ -438,7 +456,7 @@ const countries = authorized
 								<input type="search" data-place-query maxlength="200" placeholder="e.g. Alfama, Lisbon" autocomplete="off" />
 							</label>
 							<p class="admin-map-picker__hint">
-								Search OpenStreetMap Nominatim to fill place name, country, and pin. You can still edit fields after.
+								Uses Google Places when <code>GOOGLE_MAPS_API_KEY</code> is set; otherwise OpenStreetMap Nominatim.
 							</p>
 							<ul class="admin-place-search__results" data-place-results hidden></ul>
 							<p class="form__status" data-place-status role="status" aria-live="polite"></p>
@@ -466,8 +484,12 @@ const countries = authorized
 							<input type="date" name="visited_at" required value="${visited}" />
 						</label>
 						<label>
-							How I got there
-							<input type="text" name="how_i_got_there" required maxlength="500" placeholder="Tram 28, walked from Baixa…" value="${transit}" />
+							How I got there (mode)
+							<select name="transport_mode" required>${transportModeOptionsHtml(selectedTransport)}</select>
+						</label>
+						<label>
+							Transport details (optional)
+							<input type="text" name="how_i_got_there" maxlength="500" placeholder="Tram 28, walked from Baixa…" value="${transit}" />
 						</label>
 						<label>
 							Notes (optional)
@@ -541,6 +563,7 @@ const countries = authorized
 					country_code: String(data.get('country_code') || ''),
 					country_name: String(data.get('country_name') || ''),
 					place_type: String(data.get('place_type') || ''),
+					transport_mode: String(data.get('transport_mode') || 'other'),
 					visited_at: String(data.get('visited_at') || ''),
 					how_i_got_there: String(data.get('how_i_got_there') || ''),
 					notes: String(data.get('notes') || '') || null,
@@ -988,7 +1011,9 @@ const countries = authorized
 							<div class="admin-row__meta">
 								${formatVisit(item.visited_at)} · ${escapeHtml(item.country_name || item.country_code || '')}
 								· #${item.sort_order} · ${escapeHtml(typeLabels[item.place_type] || item.place_type)}
-								· ${escapeHtml(item.how_i_got_there)}${
+								· ${escapeHtml(transportLabels[item.transport_mode] || item.transport_mode || 'Other')}${
+									item.how_i_got_there ? ` · ${escapeHtml(item.how_i_got_there)}` : ''
+								}${
 									item.lat != null && item.lng != null ? ' · on map' : ''
 								}
 							</div>
@@ -1195,10 +1220,16 @@ const countries = authorized
 								? trip.stop_count
 								: stopsByTrip[trip.id]?.length;
 						const stopMeta =
-							typeof stopCount === 'number' ? ` · ${stopCount} stop${stopCount === 1 ? '' : 's'}` : '';
+							typeof stopCount === 'number'
+								? `${stopCount} stop${stopCount === 1 ? '' : 's'}`
+								: '';
 						const draftBadge = trip.published
 							? ''
-							: ' <span class="badge badge--draft">draft</span>';
+							: '<span class="badge badge--draft">draft</span>';
+						const metaBits = [stopMeta, draftBadge].filter(Boolean);
+						const metaHtml = metaBits.length
+							? `<p class="rec-item__meta">${metaBits.join(' · ')}</p>`
+							: '';
 						const summaryWords = String(trip.summary || '')
 							.trim()
 							.split(/\s+/)
@@ -1225,7 +1256,7 @@ const countries = authorized
 					<div class="admin-row-block admin-trip-block" data-id="${escapeHtml(trip.id)}">
 						<article class="rec-item trip-card admin-trip-card${hasCover ? ' rec-item--with-cover trip-card--with-cover' : ''}">
 							${media}
-							<p class="rec-item__meta">Trip${stopMeta}${draftBadge}</p>
+							${metaHtml}
 							<h3 class="rec-item__title">${escapeHtml(trip.title)}</h3>
 							${summaryTeaser ? `<p class="rec-item__summary">${escapeHtml(summaryTeaser)}</p>` : ''}
 							<div class="admin-row__actions">

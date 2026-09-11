@@ -5,7 +5,7 @@ import type {
 	TripInput,
 	TripWithItems,
 } from './types';
-import { isPlaceType } from './types';
+import { isPlaceType, isTransportMode } from './types';
 import { emptyToNull, isSafeHttpUrl, isSafeImageUrl } from './validate';
 
 export async function listPublishedTrips(db: D1Database): Promise<Trip[]> {
@@ -155,15 +155,16 @@ export async function createItineraryItem(
 	await db
 		.prepare(
 			`INSERT INTO itinerary_items
-			 (id, trip_id, place_name, place_type, how_i_got_there, visited_at, notes, url, image_url, lat, lng, country_code, country_name, sort_order)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 (id, trip_id, place_name, place_type, transport_mode, how_i_got_there, visited_at, notes, url, image_url, lat, lng, country_code, country_name, sort_order)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		)
 		.bind(
 			id,
 			tripId,
 			input.place_name.trim(),
 			input.place_type,
-			input.how_i_got_there.trim(),
+			input.transport_mode,
+			(input.how_i_got_there || '').trim(),
 			input.visited_at,
 			emptyToNull(input.notes),
 			emptyToNull(input.url),
@@ -199,14 +200,15 @@ export async function updateItineraryItem(
 	await db
 		.prepare(
 			`UPDATE itinerary_items
-			 SET place_name = ?, place_type = ?, how_i_got_there = ?, visited_at = ?, notes = ?, url = ?,
+			 SET place_name = ?, place_type = ?, transport_mode = ?, how_i_got_there = ?, visited_at = ?, notes = ?, url = ?,
 			     lat = ?, lng = ?, country_code = ?, country_name = ?, sort_order = ?, updated_at = datetime('now')
 			 WHERE id = ?`,
 		)
 		.bind(
 			input.place_name.trim(),
 			input.place_type,
-			input.how_i_got_there.trim(),
+			input.transport_mode,
+			(input.how_i_got_there || '').trim(),
 			input.visited_at,
 			emptyToNull(input.notes),
 			emptyToNull(input.url),
@@ -314,6 +316,7 @@ export function parseItineraryItemInput(body: unknown): ItineraryItemInput | { e
 	const {
 		place_name,
 		place_type,
+		transport_mode,
 		how_i_got_there,
 		visited_at,
 		notes,
@@ -331,12 +334,15 @@ export function parseItineraryItemInput(body: unknown): ItineraryItemInput | { e
 	if (!isPlaceType(place_type)) {
 		return { error: 'place_type is invalid' };
 	}
-	if (
-		typeof how_i_got_there !== 'string' ||
-		how_i_got_there.trim().length < 1 ||
-		how_i_got_there.length > 500
-	) {
-		return { error: 'how_i_got_there is required (max 500 chars)' };
+	const mode = transport_mode == null || transport_mode === '' ? 'other' : transport_mode;
+	if (!isTransportMode(mode)) {
+		return { error: 'transport_mode is invalid' };
+	}
+	if (how_i_got_there != null && typeof how_i_got_there !== 'string') {
+		return { error: 'how_i_got_there must be a string' };
+	}
+	if (typeof how_i_got_there === 'string' && how_i_got_there.length > 500) {
+		return { error: 'how_i_got_there max 500 chars' };
 	}
 
 	const visit = parseVisitedAt(visited_at);
@@ -377,7 +383,8 @@ export function parseItineraryItemInput(body: unknown): ItineraryItemInput | { e
 	return {
 		place_name,
 		place_type,
-		how_i_got_there,
+		transport_mode: mode,
+		how_i_got_there: typeof how_i_got_there === 'string' ? how_i_got_there : '',
 		visited_at: visit.value,
 		notes: typeof notes === 'string' ? notes : null,
 		url: typeof url === 'string' ? url : null,

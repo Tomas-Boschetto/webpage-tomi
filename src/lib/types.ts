@@ -8,6 +8,16 @@ export type PlaceType =
 	| 'lodging'
 	| 'other';
 
+export type TransportMode =
+	| 'walk'
+	| 'transit'
+	| 'taxi'
+	| 'car'
+	| 'bike'
+	| 'flight'
+	| 'boat'
+	| 'other';
+
 export interface Recommendation {
 	id: string;
 	type: RecommendationType;
@@ -75,6 +85,7 @@ export interface ItineraryItem {
 	trip_id: string;
 	place_name: string;
 	place_type: PlaceType;
+	transport_mode: TransportMode;
 	how_i_got_there: string;
 	visited_at: string;
 	notes: string | null;
@@ -92,7 +103,8 @@ export interface ItineraryItem {
 export interface ItineraryItemInput {
 	place_name: string;
 	place_type: PlaceType;
-	how_i_got_there: string;
+	transport_mode: TransportMode;
+	how_i_got_there?: string;
 	visited_at: string;
 	notes?: string | null;
 	url?: string | null;
@@ -140,12 +152,53 @@ export const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
 	other: 'Other',
 };
 
+export const TRANSPORT_MODES: TransportMode[] = [
+	'walk',
+	'transit',
+	'taxi',
+	'car',
+	'bike',
+	'flight',
+	'boat',
+	'other',
+];
+
+export const TRANSPORT_MODE_LABELS: Record<TransportMode, string> = {
+	walk: 'Walk',
+	transit: 'Transit',
+	taxi: 'Taxi / rideshare',
+	car: 'Car',
+	bike: 'Bike',
+	flight: 'Flight',
+	boat: 'Boat',
+	other: 'Other',
+};
+
+/** Stroke styles for Leaflet paths between stops. */
+export const TRANSPORT_MODE_MAP_STYLE: Record<
+	TransportMode,
+	{ color: string; dashArray?: string; weight: number }
+> = {
+	walk: { color: '#c4a574', dashArray: '2 8', weight: 3 },
+	transit: { color: '#d9773a', weight: 4 },
+	taxi: { color: '#e8b84a', dashArray: '8 6', weight: 3 },
+	car: { color: '#7a9e8e', weight: 4 },
+	bike: { color: '#6b9f7a', dashArray: '6 4', weight: 3 },
+	flight: { color: '#8b9dc3', dashArray: '12 8', weight: 3 },
+	boat: { color: '#5b8fa8', dashArray: '10 5', weight: 3 },
+	other: { color: '#9a9588', dashArray: '4 6', weight: 3 },
+};
+
 export function isRecommendationType(value: unknown): value is RecommendationType {
 	return value === 'movie' || value === 'book';
 }
 
 export function isPlaceType(value: unknown): value is PlaceType {
 	return PLACE_TYPES.includes(value as PlaceType);
+}
+
+export function isTransportMode(value: unknown): value is TransportMode {
+	return TRANSPORT_MODES.includes(value as TransportMode);
 }
 
 export function formatRating(rating: number | null | undefined): string | null {

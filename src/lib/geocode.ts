@@ -5,6 +5,7 @@ export type GeocodeHit = {
 	lng: number;
 	countryCode: string;
 	countryName: string;
+	source?: 'google' | 'nominatim';
 };
 
 type NominatimAddress = {
@@ -34,7 +35,22 @@ type NominatimResult = {
 	address?: NominatimAddress;
 };
 
+type GoogleAddressComponent = {
+	longText?: string;
+	shortText?: string;
+	types?: string[];
+};
+
+type GooglePlace = {
+	displayName?: { text?: string };
+	formattedAddress?: string;
+	shortFormattedAddress?: string;
+	location?: { latitude?: number; longitude?: number };
+	addressComponents?: GoogleAddressComponent[];
+};
+
 const NOMINATIM_SEARCH = 'https://nominatim.openstreetmap.org/search';
+const GOOGLE_SEARCH_TEXT = 'https://places.googleapis.com/v1/places:searchText';
 
 function pickPlaceName(hit: NominatimResult): string {
 	const address = hit.address;
@@ -60,7 +76,7 @@ function pickPlaceName(hit: NominatimResult): string {
 	return display.split(',')[0]?.trim() || display;
 }
 
-function mapHit(raw: NominatimResult): GeocodeHit | null {
+function mapNominatimHit(raw: NominatimResult): GeocodeHit | null {
 	const lat = Number(raw.lat);
 	const lng = Number(raw.lon);
 	if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
@@ -78,23 +94,46 @@ function mapHit(raw: NominatimResult): GeocodeHit | null {
 		lng,
 		countryCode,
 		countryName,
+		source: 'nominatim',
 	};
 }
 
-/** Search OpenStreetMap Nominatim for places. Call from the Worker (not the browser) to satisfy usage policy. */
-export async function searchPlaces(
-	query: string,
-	opts: { limit?: number; signal?: AbortSignal } = {},
-): Promise<GeocodeHit[] | { error: string }> {
-	const q = query.trim();
-	if (q.length < 2) return { error: 'Enter at least 2 characters to search.' };
+function componentByType(components: GoogleAddressComponent[] | undefined, type: string) {
+	return components?.find((c) => c.types?.includes(type));
+}
 
-	const limit = Math.min(8, Math.max(1, opts.limit ?? 5));
+function mapGooglePlace(place: GooglePlace): GeocodeHit | null {
+	const lat = Number(place.location?.latitude);
+	const lng = Number(place.location?.longitude);
+	if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+	const placeName = String(place.displayName?.text || '').trim();
+	const displayName = String(
+		place.formattedAddress || place.shortFormattedAddress || placeName,
+	).trim();
+	if (!placeName || !displayName) return null;
+	const country = componentByType(place.addressComponents, 'country');
+	return {
+		displayName,
+		placeName,
+		lat,
+		lng,
+		countryCode: String(country?.shortText || '')
+			.trim()
+			.toUpperCase(),
+		countryName: String(country?.longText || '').trim(),
+		source: 'google',
+	};
+}
+
+async function searchNominatim(
+	query: string,
+	opts: { limit: number; signal?: AbortSignal },
+): Promise<GeocodeHit[] | { error: string }> {
 	const url = new URL(NOMINATIM_SEARCH);
-	url.searchParams.set('q', q);
+	url.searchParams.set('q', query);
 	url.searchParams.set('format', 'jsonv2');
 	url.searchParams.set('addressdetails', '1');
-	url.searchParams.set('limit', String(limit));
+	url.searchParams.set('limit', String(opts.limit));
 
 	let res: Response;
 	try {
@@ -109,9 +148,7 @@ export async function searchPlaces(
 		return { error: 'Place search failed. Try again.' };
 	}
 
-	if (!res.ok) {
-		return { error: `Place search failed (${res.status}).` };
-	}
+	if (!res.ok) return { error: `Place search failed (${res.status}).` };
 
 	let data: unknown;
 	try {
@@ -119,13 +156,84 @@ export async function searchPlaces(
 	} catch {
 		return { error: 'Place search returned invalid JSON.' };
 	}
-
 	if (!Array.isArray(data)) return { error: 'Unexpected place search response.' };
 
 	const hits: GeocodeHit[] = [];
 	for (const row of data as NominatimResult[]) {
-		const mapped = mapHit(row);
+		const mapped = mapNominatimHit(row);
 		if (mapped) hits.push(mapped);
 	}
 	return hits;
+}
+
+async function searchGooglePlaces(
+	query: string,
+	apiKey: string,
+	opts: { limit: number; signal?: AbortSignal },
+): Promise<GeocodeHit[] | { error: string }> {
+	let res: Response;
+	try {
+		res = await fetch(GOOGLE_SEARCH_TEXT, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-Goog-Api-Key': apiKey,
+				'X-Goog-FieldMask':
+					'places.displayName,places.formattedAddress,places.shortFormattedAddress,places.location,places.addressComponents',
+			},
+			body: JSON.stringify({ textQuery: query, pageSize: opts.limit }),
+			signal: opts.signal,
+		});
+	} catch {
+		return { error: 'Google place search failed. Try again.' };
+	}
+
+	if (!res.ok) {
+		let detail = '';
+		try {
+			const errJson = (await res.json()) as { error?: { message?: string } };
+			detail = errJson.error?.message ? ` — ${errJson.error.message}` : '';
+		} catch {
+			/* ignore */
+		}
+		return { error: `Google place search failed (${res.status})${detail}.` };
+	}
+
+	let data: unknown;
+	try {
+		data = await res.json();
+	} catch {
+		return { error: 'Google place search returned invalid JSON.' };
+	}
+
+	const places = (data as { places?: GooglePlace[] }).places;
+	if (!Array.isArray(places)) return [];
+
+	const hits: GeocodeHit[] = [];
+	for (const place of places) {
+		const mapped = mapGooglePlace(place);
+		if (mapped) hits.push(mapped);
+	}
+	return hits;
+}
+
+/**
+ * Search places for admin stop entry.
+ * Prefers Google Places Text Search when `googleApiKey` is set; otherwise Nominatim.
+ */
+export async function searchPlaces(
+	query: string,
+	opts: { limit?: number; signal?: AbortSignal; googleApiKey?: string } = {},
+): Promise<GeocodeHit[] | { error: string }> {
+	const q = query.trim();
+	if (q.length < 2) return { error: 'Enter at least 2 characters to search.' };
+
+	const limit = Math.min(8, Math.max(1, opts.limit ?? 5));
+	const key = opts.googleApiKey?.trim() || '';
+
+	if (key) {
+		return searchGooglePlaces(q, key, { limit, signal: opts.signal });
+	}
+
+	return searchNominatim(q, { limit, signal: opts.signal });
 }

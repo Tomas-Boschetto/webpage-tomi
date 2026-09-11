@@ -1318,15 +1318,36 @@ p {
 	margin: 0 0 2rem;
 }
 
+.trip-map__header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	justify-content: space-between;
+	gap: 0.85rem 1.25rem;
+	margin-bottom: 0.85rem;
+}
+
 .trip-map__title {
 	margin: 0 0 0.35rem;
 	font-size: clamp(1.4rem, 3vw, 1.9rem);
 }
 
 .trip-map__lead {
-	margin: 0 0 0.85rem;
+	margin: 0;
 	color: var(--muted);
 	font-size: 0.95rem;
+	max-width: 36rem;
+}
+
+.trip-export {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.trip-export__btn {
+	font-size: 0.85rem;
+	padding: 0.4rem 0.75rem;
 }
 
 .trip-map {
@@ -1336,6 +1357,32 @@ p {
 	border-radius: calc(var(--radius) + 0.15rem);
 	overflow: hidden;
 	background: #0a1412;
+}
+
+.trip-map__legend {
+	list-style: none;
+	margin: 0.75rem 0 0;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.55rem 1rem;
+	font-family: var(--font-ui);
+	font-size: 0.82rem;
+	color: var(--muted);
+}
+
+.trip-map__legend li {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.trip-map__legend-swatch {
+	display: inline-block;
+	width: 1.35rem;
+	height: 0.35rem;
+	border-radius: 999px;
+	background: var(--accent);
 }
 
 .travel-trips {

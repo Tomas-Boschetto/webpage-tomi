@@ -3,7 +3,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import TripMap from '../../components/TripMap.astro';
 import { env } from 'cloudflare:workers';
 import { formatVisitedAt, getTripWithItems } from '../../lib/trips';
-import { PLACE_TYPE_LABELS } from '../../lib/types';
+import {
+	PLACE_TYPE_LABELS,
+	TRANSPORT_MODE_LABELS,
+	isTransportMode,
+} from '../../lib/types';
 
 export const prerender = false;
 
@@ -31,7 +35,6 @@ if (!trip) {
 			image={trip.image_url || '/images/hero-ar.jpg'}
 		>
 			<header class="section-head">
-				<p class="rec-item__meta">Trip</p>
 				<h1>{trip.title}</h1>
 				<p>{trip.summary}</p>
 				<p>
@@ -39,15 +42,20 @@ if (!trip) {
 				</p>
 			</header>
 
-			<TripMap items={trip.items} />
+			<TripMap items={trip.items} tripTitle={trip.title} />
 
 			{
 				trip.items.length === 0 ? (
 					<p class="empty">No itinerary stops published for this trip yet.</p>
 				) : (
 					<ol class="itinerary">
-						{trip.items.map((item) => {
+						{trip.items.map((item, index) => {
 							const hasPhoto = Boolean(item.image_url);
+							const mode = isTransportMode(item.transport_mode)
+								? item.transport_mode
+								: 'other';
+							const modeLabel = TRANSPORT_MODE_LABELS[mode];
+							const transitDetail = item.how_i_got_there?.trim() || '';
 							return (
 								<li
 									class:list={['itinerary__item', hasPhoto && 'itinerary__item--with-photo']}
@@ -65,14 +73,31 @@ if (!trip) {
 													<strong>Visited:</strong> {formatVisitedAt(item.visited_at)}
 												</p>
 											)}
-											<p class="itinerary__transit">
-												<strong>How I got there:</strong> {item.how_i_got_there}
-											</p>
+											{index > 0 && (
+												<p class="itinerary__transit">
+													<strong>How I got there:</strong> {modeLabel}
+													{transitDetail ? ` — ${transitDetail}` : ''}
+												</p>
+											)}
+											{index === 0 && transitDetail && (
+												<p class="itinerary__transit">
+													<strong>Arrival notes:</strong> {transitDetail}
+												</p>
+											)}
 											{item.lat != null && item.lng != null && (
 												<p class="itinerary__coords">
 													<button type="button" class="linkish" data-stop-id={item.id}>
 														Show on map
 													</button>
+													{' · '}
+													<a
+														class="linkish"
+														href={`https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`}
+														rel="noopener noreferrer"
+														target="_blank"
+													>
+														Open in Google Maps
+													</a>
 												</p>
 											)}
 											{item.notes && <p class="itinerary__notes">{item.notes}</p>}

@@ -38,7 +38,13 @@ const summaryTeaser =
 			</div>
 		)
 	}
-	<p class="rec-item__meta">Trip{typeof stopCount === 'number' ? ` · ${stopCount} stops` : ''}</p>
+	{
+		typeof stopCount === 'number' && (
+			<p class="rec-item__meta">
+				{stopCount} stop{stopCount === 1 ? '' : 's'}
+			</p>
+		)
+	}
 	<h3 class="rec-item__title">
 		<a class="rec-item__title-link" href={`/trips/${trip.id}`}>{trip.title}</a>
 	</h3>
