@@ -74,8 +74,8 @@ a:hover {
 }
 
 .skip-link {
-	position: absolute;
-	top: 0;
+	position: fixed;
+	top: 0.75rem;
 	left: var(--space);
 	z-index: 1200;
 	padding: 0.65rem 1rem;
@@ -84,16 +84,19 @@ a:hover {
 	font-weight: 600;
 	color: var(--bg-deep);
 	background: var(--accent-soft);
-	border-radius: 0 0 var(--radius) var(--radius);
+	border-radius: var(--radius);
 	text-decoration: none;
-	transform: translateY(-120%);
-	transition: transform 0.2s var(--ease);
+	/* Keep fully off-screen until focused (avoids rubber-band overscroll peek). */
+	transform: translateX(-120vw);
+	pointer-events: none;
 }
 
 .skip-link:focus,
 .skip-link:focus-visible {
-	transform: translateY(0);
-	outline-offset: 2px;
+	transform: translateX(0);
+	pointer-events: auto;
+	outline: 2px solid var(--ink);
+	outline-offset: 3px;
 }
 
 .site-main:focus {
