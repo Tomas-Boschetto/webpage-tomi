@@ -1128,7 +1128,16 @@ const countries = authorized
 						const draftBadge = trip.published
 							? ''
 							: ' <span class="badge badge--draft">draft</span>';
-						const summary = escapeHtml(String(trip.summary || '').trim());
+						const summaryWords = String(trip.summary || '')
+							.trim()
+							.split(/\s+/)
+							.filter(Boolean);
+						const summaryTeaser =
+							summaryWords.length === 0
+								? ''
+								: summaryWords.length <= 8
+									? summaryWords.join(' ')
+									: `${summaryWords.slice(0, 8).join(' ')}…`;
 						const media = hasCover
 							? `<div class="rec-item__media trip-card__media" aria-hidden="true">
 									<img
@@ -1147,7 +1156,7 @@ const countries = authorized
 							${media}
 							<p class="rec-item__meta">Trip${stopMeta}${draftBadge}</p>
 							<h3 class="rec-item__title">${escapeHtml(trip.title)}</h3>
-							${summary ? `<p class="rec-item__summary">${summary}</p>` : ''}
+							${summaryTeaser ? `<p class="rec-item__summary">${escapeHtml(summaryTeaser)}</p>` : ''}
 							<div class="admin-row__actions">
 								<button class="btn btn--primary" type="button" data-action="manage">Manage stops</button>
 								<button class="btn btn--ghost" type="button" data-action="edit">Edit</button>
