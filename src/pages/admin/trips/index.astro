@@ -363,6 +363,7 @@ const countries = authorized
 				const summary = escapeHtml(trip?.summary || '');
 				const image = escapeHtml(trip?.image_url || '');
 				const published = !trip || trip.published === 1;
+				const canPickStopCover = mode === 'edit' && Boolean(id);
 				return `
 					<form class="form admin-entry-form" data-mode="${mode}">
 						<input type="hidden" name="id" value="${escapeHtml(id)}" />
@@ -376,12 +377,23 @@ const countries = authorized
 						</label>
 						<label>
 							Cover image URL
-							<input type="url" name="image_url" maxlength="500" placeholder="https://" value="${image}" data-cover-url />
+							<input type="text" name="image_url" maxlength="500" placeholder="https://… or /media/…" value="${image}" data-cover-url />
 						</label>
 						<div class="admin-cover-tools">
 							<button class="btn btn--ghost" type="button" data-action="fetch-cover">Fetch photo (Unsplash)</button>
 							<p class="form__status" data-cover-status role="status" aria-live="polite"></p>
 						</div>
+						${
+							canPickStopCover
+								? `
+						<div class="admin-stop-cover" data-stop-cover>
+							<p class="admin-map-picker__label">Or use a stop photo</p>
+							<p class="admin-map-picker__hint">Photos you’ve uploaded on this trip’s stops. Click one to set the cover.</p>
+							<div class="admin-cover__grid" data-stop-cover-grid></div>
+							<p class="admin-map-picker__hint" data-stop-cover-empty hidden>No stop photos yet — upload one while managing stops, then come back here.</p>
+						</div>`
+								: `<p class="admin-map-picker__hint">After you add stops with photos, edit the trip to use one as the cover.</p>`
+						}
 						<img class="admin-cover-preview" data-cover-preview alt="" ${image ? `src="${image}"` : 'hidden'} width="210" height="140" />
 						<label class="checkbox-row">
 							<input type="checkbox" name="published" ${published ? 'checked' : ''} />
@@ -582,6 +594,8 @@ const countries = authorized
 				const coverInput = form?.querySelector('[data-cover-url]');
 				const coverPreview = form?.querySelector('[data-cover-preview]');
 				const coverStatus = form?.querySelector('[data-cover-status]');
+				const stopCoverGrid = form?.querySelector('[data-stop-cover-grid]');
+				const stopCoverEmpty = form?.querySelector('[data-stop-cover-empty]');
 
 				function setCoverStatus(message, ok = true) {
 					if (!coverStatus) return;
@@ -601,8 +615,62 @@ const countries = authorized
 					coverPreview.src = next;
 				}
 
+				function markStopCoverSelection(url) {
+					if (!(stopCoverGrid instanceof HTMLElement)) return;
+					const current = String(url || '').trim();
+					stopCoverGrid.querySelectorAll('[data-stop-cover-url]').forEach((btn) => {
+						btn.classList.toggle('is-selected', btn.getAttribute('data-stop-cover-url') === current);
+					});
+				}
+
+				async function loadStopCoverChoices() {
+					if (!(stopCoverGrid instanceof HTMLElement) || !trip?.id) return;
+					try {
+						const stops = await loadStops(trip.id);
+						const withPhotos = stops.filter((s) => String(s.image_url || '').trim());
+						if (!withPhotos.length) {
+							stopCoverGrid.innerHTML = '';
+							stopCoverEmpty?.removeAttribute('hidden');
+							return;
+						}
+						stopCoverEmpty?.setAttribute('hidden', '');
+						stopCoverGrid.innerHTML = withPhotos
+							.map(
+								(stop) => `
+							<button
+								type="button"
+								class="admin-cover__choice admin-stop-cover__choice"
+								data-stop-cover-url="${escapeHtml(stop.image_url)}"
+								title="${escapeHtml(stop.place_name)}"
+							>
+								<img src="${escapeHtml(stop.image_url)}" alt="" width="120" height="80" loading="lazy" decoding="async" />
+								<span class="admin-stop-cover__label">${escapeHtml(stop.place_name)}</span>
+							</button>`,
+							)
+							.join('');
+						markStopCoverSelection(coverInput instanceof HTMLInputElement ? coverInput.value : '');
+						stopCoverGrid.querySelectorAll('[data-stop-cover-url]').forEach((btn) => {
+							btn.addEventListener('click', () => {
+								const url = btn.getAttribute('data-stop-cover-url') || '';
+								if (coverInput instanceof HTMLInputElement) coverInput.value = url;
+								syncCoverPreview(url);
+								markStopCoverSelection(url);
+								setCoverStatus(`Using photo from “${btn.getAttribute('title') || 'stop'}”. Save the trip to keep this cover.`);
+							});
+						});
+					} catch {
+						stopCoverGrid.innerHTML = '';
+						if (stopCoverEmpty) {
+							stopCoverEmpty.hidden = false;
+							stopCoverEmpty.textContent = 'Could not load stop photos.';
+						}
+					}
+				}
+
 				coverInput?.addEventListener('input', () => {
-					syncCoverPreview(coverInput instanceof HTMLInputElement ? coverInput.value : '');
+					const value = coverInput instanceof HTMLInputElement ? coverInput.value : '';
+					syncCoverPreview(value);
+					markStopCoverSelection(value);
 				});
 
 				form?.querySelector('[data-action="fetch-cover"]')?.addEventListener('click', async () => {
@@ -623,6 +691,7 @@ const countries = authorized
 						coverInput.value = json.image_url;
 					}
 					syncCoverPreview(json.image_url);
+					markStopCoverSelection(json.image_url);
 					setCoverStatus(`Matched “${json.matched_title}”. Save the trip to keep this cover.`);
 				});
 
@@ -646,6 +715,8 @@ const countries = authorized
 					await loadTrips();
 					if (!editingId && json.id) await openManageStops(json.id);
 				});
+
+				void loadStopCoverChoices();
 			}
 
 			/**
@@ -1143,8 +1214,8 @@ const countries = authorized
 									<img
 										src="${escapeHtml(trip.image_url)}"
 										alt=""
-										width="210"
-										height="140"
+										width="180"
+										height="120"
 										loading="lazy"
 										decoding="async"
 									/>

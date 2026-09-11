@@ -46,56 +46,65 @@ if (!trip) {
 					<p class="empty">No itinerary stops published for this trip yet.</p>
 				) : (
 					<ol class="itinerary">
-						{trip.items.map((item) => (
-							<li
-								class="itinerary__item"
-								id={`stop-${item.id}`}
-								data-stop-id={item.lat != null && item.lng != null ? item.id : undefined}
-							>
-								<div class="itinerary__head">
-									<span class="badge">{PLACE_TYPE_LABELS[item.place_type]}</span>
-									<h2 class="itinerary__place">{item.place_name}</h2>
-								</div>
-								{item.visited_at && (
-									<p class="itinerary__when">
-										<strong>Visited:</strong> {formatVisitedAt(item.visited_at)}
-									</p>
-								)}
-								<p class="itinerary__transit">
-									<strong>How I got there:</strong> {item.how_i_got_there}
-								</p>
-								{item.lat != null && item.lng != null && (
-									<p class="itinerary__coords">
-										<button type="button" class="linkish" data-stop-id={item.id}>
-											Show on map
-										</button>
-									</p>
-								)}
-								{item.notes && <p class="itinerary__notes">{item.notes}</p>}
-								{item.image_url && (
-									<figure class="itinerary__photo">
-										<img
-											src={item.image_url}
-											alt={`Photo from ${item.place_name}`}
-											loading="lazy"
-											decoding="async"
-											width="960"
-											height="640"
-										/>
-									</figure>
-								)}
-								{item.url && (
-									<a
-										class="rec-item__link"
-										href={item.url}
-										rel="noopener noreferrer"
-										target="_blank"
-									>
-										Link
-									</a>
-								)}
-							</li>
-						))}
+						{trip.items.map((item) => {
+							const hasPhoto = Boolean(item.image_url);
+							return (
+								<li
+									class:list={['itinerary__item', hasPhoto && 'itinerary__item--with-photo']}
+									id={`stop-${item.id}`}
+									data-stop-id={item.lat != null && item.lng != null ? item.id : undefined}
+								>
+									<div class="itinerary__head">
+										<span class="badge">{PLACE_TYPE_LABELS[item.place_type]}</span>
+										<h2 class="itinerary__place">{item.place_name}</h2>
+									</div>
+									<div class="itinerary__body">
+										<div class="itinerary__copy">
+											{item.visited_at && (
+												<p class="itinerary__when">
+													<strong>Visited:</strong> {formatVisitedAt(item.visited_at)}
+												</p>
+											)}
+											<p class="itinerary__transit">
+												<strong>How I got there:</strong> {item.how_i_got_there}
+											</p>
+											{item.lat != null && item.lng != null && (
+												<p class="itinerary__coords">
+													<button type="button" class="linkish" data-stop-id={item.id}>
+														Show on map
+													</button>
+												</p>
+											)}
+											{item.notes && <p class="itinerary__notes">{item.notes}</p>}
+											{item.url && (
+												<p class="itinerary__link-wrap">
+													<a
+														class="rec-item__link"
+														href={item.url}
+														rel="noopener noreferrer"
+														target="_blank"
+													>
+														Link
+													</a>
+												</p>
+											)}
+										</div>
+										{hasPhoto && (
+											<figure class="itinerary__photo">
+												<img
+													src={item.image_url!}
+													alt={`Photo from ${item.place_name}`}
+													loading="lazy"
+													decoding="async"
+													width="640"
+													height="427"
+												/>
+											</figure>
+										)}
+									</div>
+								</li>
+							);
+						})}
 					</ol>
 				)
 			}
