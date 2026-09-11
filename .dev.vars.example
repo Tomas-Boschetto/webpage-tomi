@@ -16,5 +16,8 @@ CONTACT_TO_EMAIL=
 # TMDB (movies cover lookup in /admin — free key at https://www.themoviedb.org/settings/api)
 TMDB_API_KEY=
 
+# Optional: OMDb for IMDb community ratings on movie lookup (https://www.omdbapi.com/apikey.aspx)
+OMDB_API_KEY=
+
 # Unsplash (trip cover lookup in /admin/trips — https://unsplash.com/oauth/applications)
 UNSPLASH_ACCESS_KEY=

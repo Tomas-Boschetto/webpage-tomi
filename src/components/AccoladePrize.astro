@@ -1,0 +1,63 @@
+---
+import { markDisplayName, type AccoladeMark } from '../lib/accolades';
+
+interface Props {
+	award: string;
+	org: string;
+	mark: AccoladeMark;
+}
+
+const { award, org, mark } = Astro.props;
+const markLabel = markDisplayName(mark);
+const gradId = `prize-star-${mark}-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<li class={`rec-prize rec-prize--${mark}`}>
+	<span class={`rec-prize__star rec-prize__star--${mark}`} aria-hidden="true">
+		<svg viewBox="0 0 32 32" focusable="false">
+			<defs>
+				<linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+					{
+						mark === 'oscar' || mark === 'pulitzer' || mark === 'booker' || mark === 'nobel' ? (
+							<>
+								<stop offset="0%" stop-color="#fff1c2" />
+								<stop offset="45%" stop-color="#efd078" />
+								<stop offset="100%" stop-color="#b8862e" />
+							</>
+						) : mark === 'golden-globe' || mark === 'national-book' || mark === 'hugo' ? (
+							<>
+								<stop offset="0%" stop-color="#ffe9ad" />
+								<stop offset="100%" stop-color="#c9962c" />
+							</>
+						) : mark === 'bafta' || mark === 'nebula' || mark === 'womens-prize' ? (
+							<>
+								<stop offset="0%" stop-color="#e0c59a" />
+								<stop offset="100%" stop-color="#8a6420" />
+							</>
+						) : mark === 'cannes' || mark === 'goncourt' ? (
+							<>
+								<stop offset="0%" stop-color="#8fd4a4" />
+								<stop offset="100%" stop-color="#3f8f5b" />
+							</>
+						) : (
+							<>
+								<stop offset="0%" stop-color="#e8ecea" />
+								<stop offset="100%" stop-color="#8a9490" />
+							</>
+						)
+					}
+				</linearGradient>
+			</defs>
+			<path
+				fill={`url(#${gradId})`}
+				d="M16 2.4l3.55 8.55 9.25.7-7.05 5.85 2.2 9.05L16 21.7l-7.95 4.85 2.2-9.05-7.05-5.85 9.25-.7L16 2.4z"
+			></path>
+		</svg>
+	</span>
+	<span class="rec-prize__copy">
+		<span class="rec-prize__name">{award}</span>
+		<span class="rec-prize__org">
+			{org}{mark === 'oscar' ? ` · ${markLabel}` : ''}
+		</span>
+	</span>
+</li>

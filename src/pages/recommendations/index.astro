@@ -15,6 +15,7 @@ import {
 	sortTrips,
 } from '../../lib/rec-filters';
 import { coverSourceFromUrl } from '../../lib/covers';
+import { accoladesSource, extractAccoladeInstitutions } from '../../lib/accolades';
 import { listItineraryForTrip, listPublishedTrips } from '../../lib/trips';
 import { isRecommendationType, type RecommendationType } from '../../lib/types';
 
@@ -27,6 +28,7 @@ const activeType: RecommendationType | undefined = isRecommendationType(typePara
 	: undefined;
 
 const genreParam = Astro.url.searchParams.get('genre')?.trim() || '';
+const awardParam = Astro.url.searchParams.get('award')?.trim() || '';
 const countryParam = Astro.url.searchParams.get('country')?.trim().toUpperCase() || '';
 const sortParam = Astro.url.searchParams.get('sort');
 const minRating = parseMinRating(Astro.url.searchParams.get('min_rating'));
@@ -35,8 +37,10 @@ const tripSort = parseTripSort(sortParam);
 
 const allMedia = showTravel ? [] : await listPublished(env.DB, activeType);
 const genres = extractGenres(allMedia);
+const awardInstitutions = extractAccoladeInstitutions(allMedia);
 const mediaItems = filterAndSortRecommendations(allMedia, {
 	genre: genreParam || null,
+	award: awardParam || null,
 	minRating,
 	sort: recSort,
 });
@@ -44,7 +48,7 @@ const mediaItems = filterAndSortRecommendations(allMedia, {
 const allTrips = showTravel
 	? await listPublishedTrips(env.DB)
 	: !activeType
-		? genreParam || minRating != null
+		? genreParam || awardParam || minRating != null
 			? []
 			: await listPublishedTrips(env.DB)
 		: [];
@@ -106,6 +110,9 @@ const coverSources = new Set(
 const showTmdbCredit = coverSources.has('tmdb');
 const showOpenLibraryCredit = coverSources.has('openlibrary');
 const showUnsplashCredit = coverSources.has('unsplash');
+const showWikidataCredit = mediaItems.some(
+	(item) => accoladesSource(item.accolades) === 'wikidata',
+);
 ---
 
 <BaseLayout title="Recommendations" description="Movie, book, and travel recommendations.">
@@ -139,6 +146,21 @@ const showUnsplashCredit = coverSources.has('unsplash');
 						))}
 					</select>
 				</label>
+				{
+					awardInstitutions.length > 0 && (
+						<label class="rec-toolbar__field">
+							<span>Award</span>
+							<select name="award">
+								<option value="">All awards</option>
+								{awardInstitutions.map((institution) => (
+									<option value={institution} selected={awardParam === institution}>
+										{institution}
+									</option>
+								))}
+							</select>
+						</label>
+					)
+				}
 				<label class="rec-toolbar__field">
 					<span>Min rating</span>
 					<select name="min_rating">
@@ -247,7 +269,7 @@ const showUnsplashCredit = coverSources.has('unsplash');
 						<TripCard trip={trip} stopCount={stopCount} countryCodes={countryCodes} />
 					))}
 				</div>
-				{(showTmdbCredit || showOpenLibraryCredit || showUnsplashCredit) && (
+				{(showTmdbCredit || showOpenLibraryCredit || showUnsplashCredit || showWikidataCredit) && (
 					<p class="rec-attribution">
 						{showTmdbCredit && (
 							<>
@@ -256,7 +278,7 @@ const showUnsplashCredit = coverSources.has('unsplash');
 									TMDB
 								</a>
 								. This product uses the TMDB API but is not endorsed or certified by TMDB.
-								{showOpenLibraryCredit || showUnsplashCredit ? ' ' : ''}
+								{showOpenLibraryCredit || showUnsplashCredit || showWikidataCredit ? ' ' : ''}
 							</>
 						)}
 						{showOpenLibraryCredit && (
@@ -266,7 +288,7 @@ const showUnsplashCredit = coverSources.has('unsplash');
 									Open Library
 								</a>
 								.
-								{showUnsplashCredit ? ' ' : ''}
+								{showUnsplashCredit || showWikidataCredit ? ' ' : ''}
 							</>
 						)}
 						{showUnsplashCredit && (
@@ -276,6 +298,16 @@ const showUnsplashCredit = coverSources.has('unsplash');
 									Unsplash
 								</a>
 								.
+								{showWikidataCredit ? ' ' : ''}
+							</>
+						)}
+						{showWikidataCredit && (
+							<>
+								Award data from{' '}
+								<a href="https://www.wikidata.org/" rel="noopener noreferrer" target="_blank">
+									Wikidata
+								</a>{' '}
+								(CC0).
 							</>
 						)}
 					</p>

@@ -1,0 +1,272 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AccoladePrize from '../../components/AccoladePrize.astro';
+import { env } from 'cloudflare:workers';
+import { getById } from '../../lib/db';
+import { parseAccolades } from '../../lib/accolades';
+import {
+	externalRatingMeta,
+	formatExternalRatingDisplay,
+	parseExternalRatings,
+} from '../../lib/external-ratings';
+import { formatEditionPublished, formatExperiencedAt, formatGenreBrief, formatRating } from '../../lib/types';
+
+export const prerender = false;
+
+const id = Astro.params.id!;
+const item = await getById(env.DB, id);
+const published = item && item.published === 1 && (item.type === 'movie' || item.type === 'book');
+
+if (!published) {
+	Astro.response.status = 404;
+}
+
+const label = item?.type === 'book' ? 'Book' : 'Movie';
+const creatorLabel = item?.type === 'book' ? 'Author' : 'Director';
+const whenLabel = item?.type === 'book' ? 'Read' : 'Watched';
+const releaseLabel = item?.type === 'book' ? 'Edition published' : 'Released';
+const originalLabel = item?.type === 'book' ? 'First published' : 'Released';
+const coverKind = item?.type === 'book' ? 'Cover' : 'Poster';
+const ratingText = item ? formatRating(item.rating) : null;
+const whenText = item
+	? formatExperiencedAt(item.experienced_at, { monthOnly: item.type === 'book' })
+	: '';
+const releaseText = item ? formatEditionPublished(item.edition_published_at) : '';
+const originalText = item ? formatEditionPublished(item.original_published_at) : '';
+const genreBrief = item ? formatGenreBrief(item.genre) : '';
+const accoladeGroups = parseAccolades(item?.accolades);
+const visibleGroups = accoladeGroups.slice(0, 2);
+const extraGroups = accoladeGroups.slice(2);
+const marketplaceRatings = parseExternalRatings(item?.external_ratings);
+const synopsisSource = item?.type === 'movie' ? 'TMDB' : 'Open Library';
+const moreInfoIsWikipedia = Boolean(item?.url && /wikipedia\.org/i.test(item.url));
+const moreInfoLabel = moreInfoIsWikipedia ? 'Wikipedia' : 'More info';
+const backType = item?.type === 'book' ? 'book' : 'movie';
+
+function prizeRows(groups: typeof accoladeGroups) {
+	return groups.flatMap((group) =>
+		group.awards.map((award) => ({
+			award,
+			org: group.label,
+			mark: group.mark,
+		})),
+	);
+}
+
+const visiblePrizes = prizeRows(visibleGroups);
+const extraPrizes = prizeRows(extraGroups);
+---
+
+{
+	!published || !item ? (
+		<BaseLayout title="Not found" robots="noindex, follow">
+			<header class="section-head">
+				<h1>Not found</h1>
+				<p>
+					<a href="/recommendations">Back to recommendations</a>
+				</p>
+			</header>
+		</BaseLayout>
+	) : (
+		<BaseLayout
+			title={item.title}
+			description={item.commentary?.trim() || item.summary}
+			image={item.image_url || '/images/hero-ar.jpg'}
+		>
+			<p class="rec-detail__back">
+				<a href={`/recommendations?type=${backType}`}>← All {backType === 'book' ? 'books' : 'movies'}</a>
+			</p>
+
+			<article class:list={['rec-detail', item.image_url && 'rec-detail--with-cover']}>
+				{
+					item.image_url && (
+						<div class="rec-detail__media">
+							<img
+								src={item.image_url}
+								alt={`${coverKind} of ${item.title}`}
+								width="280"
+								height="420"
+								decoding="async"
+							/>
+						</div>
+					)
+				}
+
+				<div class="rec-detail__body">
+					<p class="rec-item__meta">
+						{label}
+						{genreBrief ? ` · ${genreBrief}` : ''}
+					</p>
+					<h1 class="rec-detail__title">{item.title}</h1>
+
+					{
+						ratingText && (
+							<p class="rec-item__rating" aria-label={`My rating ${ratingText}`}>
+								<span class="stars" aria-hidden="true">
+									{'★'.repeat(Math.round(item.rating ?? 0))}
+									{'☆'.repeat(Math.max(0, 5 - Math.round(item.rating ?? 0)))}
+								</span>
+								<span class="rec-item__rating-text">
+									{ratingText}
+									<span class="rec-item__rating-mine"> · mine</span>
+								</span>
+							</p>
+						)
+					}
+
+					{
+						marketplaceRatings.length > 0 && (
+							<div class="rec-marketplace">
+								<p class="rec-marketplace__label">Elsewhere</p>
+								<ul class="rec-marketplace__list">
+									{marketplaceRatings.map((entry) => {
+										const meta = externalRatingMeta(entry.source);
+										const score = formatExternalRatingDisplay(entry);
+										const href = entry.url || meta.home;
+										return (
+											<li>
+												<a href={href} rel="noopener noreferrer" target="_blank">
+													{entry.label}
+													<span class="sr-only">
+														{' '}
+														rating for {item.title} (opens in a new tab)
+													</span>
+												</a>
+												<span class="rec-marketplace__score">{score}</span>
+												{entry.count != null && entry.count > 0 && (
+													<span class="rec-marketplace__count">
+														({entry.count.toLocaleString('en-US')} votes)
+													</span>
+												)}
+											</li>
+										);
+									})}
+								</ul>
+								<p class="rec-marketplace__credit">
+									Third-party community scores — not affiliated with those sites. See{' '}
+									<a href="/disclaimer">disclaimer</a>.
+								</p>
+							</div>
+						)
+					}
+
+					<ul class="rec-item__details">
+						{whenText && (
+							<li>
+								<strong>{whenLabel}:</strong> {whenText}
+							</li>
+						)}
+						{item.director && (
+							<li>
+								<strong>{creatorLabel}:</strong> {item.director}
+							</li>
+						)}
+						{item.type === 'movie' && item.cast_members && (
+							<li>
+								<strong>Cast:</strong> {item.cast_members}
+							</li>
+						)}
+						{originalText && (
+							<li>
+								<strong>{originalLabel}:</strong> {originalText}
+							</li>
+						)}
+						{releaseText && releaseText !== originalText && (
+							<li>
+								<strong>{releaseLabel}:</strong> {releaseText}
+							</li>
+						)}
+						{releaseText && !originalText && (
+							<li>
+								<strong>{releaseLabel}:</strong> {releaseText}
+							</li>
+						)}
+					</ul>
+
+					<section class="rec-prose-block">
+						<h2 class="rec-prose-block__label">Synopsis</h2>
+						<p class="rec-prose-block__text">{item.summary}</p>
+						<p class="rec-prose-block__source">Source: {synopsisSource} (edited as needed)</p>
+					</section>
+
+					<section class="rec-prose-block rec-prose-block--personal">
+						<h2 class="rec-prose-block__label">My commentary</h2>
+						{
+							item.commentary?.trim() ? (
+								<p class="rec-prose-block__text">{item.commentary}</p>
+							) : (
+								<p class="rec-prose-block__text rec-prose-block__text--empty">
+									No personal commentary yet.
+								</p>
+							)
+						}
+					</section>
+
+					{
+						visiblePrizes.length > 0 && (
+							<section class="rec-prizes">
+								<h2 class="rec-prizes__heading">Awards</h2>
+								<ul class="rec-prizes__list">
+									{visiblePrizes.map((prize) => (
+										<AccoladePrize award={prize.award} org={prize.org} mark={prize.mark} />
+									))}
+								</ul>
+								{extraPrizes.length > 0 && (
+									<details class="rec-prizes__more">
+										<summary>
+											Show {extraGroups.length} more{' '}
+											{extraGroups.length === 1 ? 'institution' : 'institutions'}
+										</summary>
+										<ul class="rec-prizes__list">
+											{extraPrizes.map((prize) => (
+												<AccoladePrize
+													award={prize.award}
+													org={prize.org}
+													mark={prize.mark}
+												/>
+											))}
+										</ul>
+									</details>
+								)}
+							</section>
+						)
+					}
+
+					<div class="rec-item__links">
+						{item.type === 'movie' && item.imdb_url && (
+							<a
+								class="rec-item__link"
+								href={item.imdb_url}
+								rel="noopener noreferrer"
+								target="_blank"
+							>
+								IMDb<span class="sr-only"> for {item.title} (opens in a new tab)</span>
+							</a>
+						)}
+						{item.type === 'book' && item.goodreads_url && (
+							<a
+								class="rec-item__link"
+								href={item.goodreads_url}
+								rel="noopener noreferrer"
+								target="_blank"
+							>
+								Goodreads<span class="sr-only"> for {item.title} (opens in a new tab)</span>
+							</a>
+						)}
+						{item.url && (
+							<a
+								class="rec-item__link"
+								href={item.url}
+								rel="noopener noreferrer"
+								target="_blank"
+							>
+								{moreInfoLabel}
+								<span class="sr-only"> for {item.title} (opens in a new tab)</span>
+							</a>
+						)}
+					</div>
+				</div>
+			</article>
+		</BaseLayout>
+	)
+}

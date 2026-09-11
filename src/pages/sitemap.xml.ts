@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { absoluteUrl, getSiteUrl } from '../lib/site';
+import { listPublished } from '../lib/db';
 import { listPublishedTrips } from '../lib/trips';
 
 export const prerender = false;
@@ -29,17 +30,27 @@ function urlEntry(loc: string, lastmod?: string | null, changefreq = 'weekly', p
 export const GET: APIRoute = async () => {
 	const siteUrl = getSiteUrl(env);
 	const trips = await listPublishedTrips(env.DB);
+	const recs = await listPublished(env.DB);
 
 	const staticPages = [
 		{ path: '/', priority: '1.0', changefreq: 'weekly' },
 		{ path: '/about', priority: '0.8', changefreq: 'monthly' },
 		{ path: '/recommendations', priority: '0.9', changefreq: 'daily' },
 		{ path: '/contact', priority: '0.5', changefreq: 'yearly' },
+		{ path: '/disclaimer', priority: '0.3', changefreq: 'yearly' },
 	];
 
 	const entries = [
 		...staticPages.map((page) =>
 			urlEntry(absoluteUrl(siteUrl, page.path), null, page.changefreq, page.priority),
+		),
+		...recs.map((item) =>
+			urlEntry(
+				absoluteUrl(siteUrl, `/recommendations/${item.id}`),
+				item.updated_at || item.created_at,
+				'monthly',
+				'0.8',
+			),
 		),
 		...trips.map((trip) =>
 			urlEntry(

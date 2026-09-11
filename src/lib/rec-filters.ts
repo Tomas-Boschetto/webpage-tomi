@@ -1,4 +1,6 @@
 import type { Recommendation, Trip } from './types';
+import { matchesAccoladeInstitution } from './accolades';
+import { STANDARD_GENRES, isStandardGenre } from './genres';
 
 export type RecSort =
 	| 'newest'
@@ -38,7 +40,7 @@ export function parseMinRating(value: string | null): number | null {
 	return n;
 }
 
-/** Split free-text genre fields into unique labels. */
+/** Split free-text genre fields into unique labels (standard categories first). */
 export function extractGenres(items: Recommendation[]): string[] {
 	const set = new Set<string>();
 	for (const item of items) {
@@ -48,7 +50,18 @@ export function extractGenres(items: Recommendation[]): string[] {
 			if (label) set.add(label);
 		}
 	}
-	return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+	const found = [...set];
+	const standard = STANDARD_GENRES.filter((g) =>
+		found.some((f) => f.toLowerCase() === g.toLowerCase()),
+	);
+	const extras = found
+		.filter(
+			(f) =>
+				!isStandardGenre(f) &&
+				!standard.some((g) => g.toLowerCase() === f.toLowerCase()),
+		)
+		.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+	return [...standard, ...extras];
 }
 
 function genreTokens(genre: string | null): string[] {
@@ -75,14 +88,21 @@ function dateKey(value: string | null | undefined): number {
 
 export function filterAndSortRecommendations(
 	items: Recommendation[],
-	options: { genre?: string | null; minRating?: number | null; sort?: RecSort },
+	options: {
+		genre?: string | null;
+		award?: string | null;
+		minRating?: number | null;
+		sort?: RecSort;
+	},
 ): Recommendation[] {
 	const genre = options.genre?.trim() || null;
+	const award = options.award?.trim() || null;
 	const minRating = options.minRating ?? null;
 	const sort = options.sort ?? 'newest';
 
 	const filtered = items.filter((item) => {
 		if (!matchesGenre(item, genre)) return false;
+		if (!matchesAccoladeInstitution(item, award)) return false;
 		if (minRating != null && (item.rating == null || item.rating < minRating)) return false;
 		return true;
 	});

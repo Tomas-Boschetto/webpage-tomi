@@ -13,6 +13,7 @@ export interface Recommendation {
 	type: RecommendationType;
 	title: string;
 	summary: string;
+	commentary: string | null;
 	url: string | null;
 	image_url: string | null;
 	rating: number | null;
@@ -22,6 +23,10 @@ export interface Recommendation {
 	imdb_url: string | null;
 	goodreads_url: string | null;
 	experienced_at: string | null;
+	edition_published_at: string | null;
+	original_published_at: string | null;
+	accolades: string | null;
+	external_ratings: string | null;
 	published: number;
 	created_at: string;
 	updated_at: string;
@@ -31,6 +36,7 @@ export interface RecommendationInput {
 	type: RecommendationType;
 	title: string;
 	summary: string;
+	commentary?: string | null;
 	url?: string | null;
 	image_url?: string | null;
 	rating?: number | null;
@@ -40,6 +46,10 @@ export interface RecommendationInput {
 	imdb_url?: string | null;
 	goodreads_url?: string | null;
 	experienced_at?: string | null;
+	edition_published_at?: string | null;
+	original_published_at?: string | null;
+	accolades?: string | null;
+	external_ratings?: string | null;
 	published?: boolean;
 }
 
@@ -144,9 +154,44 @@ export function formatRating(rating: number | null | undefined): string | null {
 	return `${clamped.toFixed(clamped % 1 === 0 ? 0 : 1)} / 5`;
 }
 
-export function formatExperiencedAt(value: string | null | undefined): string {
+/** Short genre line for cards/headers (full string stays in admin / filters). */
+export function formatGenreBrief(genre: string | null | undefined, maxParts = 2): string {
+	if (!genre?.trim()) return '';
+	const parts = genre
+		.split(/[,/|]/)
+		.map((p) => p.trim())
+		.filter(Boolean);
+	if (!parts.length) return '';
+	if (parts.length <= maxParts) return parts.join(', ');
+	return `${parts.slice(0, maxParts).join(', ')}…`;
+}
+
+export function formatExperiencedAt(
+	value: string | null | undefined,
+	opts: { monthOnly?: boolean } = {},
+): string {
 	if (!value) return '';
-	const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+	const raw = value.trim();
+	const day = /^\d{4}-\d{2}$/.test(raw) ? `${raw}-01` : raw.slice(0, 10);
+	const date = new Date(`${day}T12:00:00`);
+	if (Number.isNaN(date.getTime())) return raw;
+	if (opts.monthOnly) {
+		return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+	}
+	return date.toLocaleDateString(undefined, { dateStyle: 'medium' });
+}
+
+export function formatEditionPublished(value: string | null | undefined): string {
+	if (!value) return '';
+	const day = value.trim().slice(0, 10);
+	if (/^\d{4}-01-01$/.test(day)) return day.slice(0, 4);
+	if (/^\d{4}-\d{2}-01$/.test(day)) {
+		const date = new Date(`${day}T12:00:00`);
+		if (!Number.isNaN(date.getTime())) {
+			return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+		}
+	}
+	const date = new Date(`${day}T12:00:00`);
 	if (Number.isNaN(date.getTime())) return value;
 	return date.toLocaleDateString(undefined, { dateStyle: 'medium' });
 }

@@ -30,7 +30,7 @@ Open:
 ## Content workflow
 
 1. Open `/admin` for movies & books, or `/admin/trips` for travel (Cloudflare Access in production)
-2. For movies/books: use **Fetch poster (TMDB)** / **Fetch cover (Open Library)** to fill the image URL (set `TMDB_API_KEY` for movies)
+2. For movies/books: start typing a title — matches appear live; pick one to autofill, then choose a cover/poster (set `TMDB_API_KEY` for movies; books use Open Library)
 3. For a trip: create it, optionally **Fetch photo (Unsplash)** for the list cover (`UNSPLASH_ACCESS_KEY`), then **Manage stops** — each stop needs a country (feeds the planisphere), visit date, optional map pin, and (after saving) an optional photo upload to R2
 4. Published items appear on `/recommendations` (and `/trips/[id]` with maps) immediately — no redeploy for content. Code changes still need `npm run deploy`
 
@@ -52,5 +52,6 @@ Secrets (`.dev.vars` locally, Cloudflare dashboard in production — never commi
 - `ADMIN_DEV_BYPASS` — local only; never set `true` in production
 - `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`
 - `RESEND_API_KEY` / `CONTACT_FROM_EMAIL`
-- `TMDB_API_KEY` — movie poster lookup in admin (books use Open Library, no key)
+- `TMDB_API_KEY` — movie metadata + poster lookup in admin (books use Open Library, no key)
+- `OMDB_API_KEY` — optional; IMDb community ratings on movie lookup ([OMDb](https://www.omdbapi.com/apikey.aspx))
 - `UNSPLASH_ACCESS_KEY` — trip cover lookup in `/admin/trips`

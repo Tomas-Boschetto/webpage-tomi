@@ -44,7 +44,8 @@ In the Worker/Pages project → **Settings → Variables and Secrets**, set:
 | `TURNSTILE_SITE_KEY` | var | From Turnstile widget |
 | `TURNSTILE_SECRET_KEY` | secret | From Turnstile |
 | `RESEND_API_KEY` | secret | From Resend |
-| `TMDB_API_KEY` | **secret** | From [TMDB API settings](https://www.themoviedb.org/settings/api) — movie poster lookup in admin |
+| `TMDB_API_KEY` | **secret** | From [TMDB API settings](https://www.themoviedb.org/settings/api) — movie metadata + poster lookup in admin |
+| `OMDB_API_KEY` | secret (optional) | From [OMDb](https://www.omdbapi.com/apikey.aspx) — IMDb community ratings on movie lookup |
 | `UNSPLASH_ACCESS_KEY` | **secret** | From [Unsplash developers](https://unsplash.com/oauth/applications) — trip cover lookup |
 
 Do **not** set `ADMIN_DEV_BYPASS=true` in production.
@@ -94,14 +95,15 @@ After this, only you can open the admin UI or call admin APIs.
 2. Verify your domain (or use `onboarding@resend.dev` for testing)
 3. Set `RESEND_API_KEY` and `CONTACT_FROM_EMAIL`
 
-## 7. TMDB (movie posters)
+## 7. TMDB / Open Library (movies & books)
 
 1. Create a free account at [themoviedb.org](https://www.themoviedb.org/)
 2. Request an API key under **Settings → API**
 3. Set `TMDB_API_KEY` as a secret (and in `.dev.vars` locally)
-4. In `/admin`, open a movie and use **Fetch poster (TMDB)**
+4. In `/admin`, start typing a title — matches appear live; pick one to autofill fields, then choose a cover/poster from the image list
+5. Optional: set `OMDB_API_KEY` ([omdbapi.com](https://www.omdbapi.com/apikey.aspx)) so movie lookup also fills the IMDb community rating
 
-Book covers use Open Library (no API key). Attribution appears on `/recommendations` when those images are shown.
+Book data and covers use Open Library (no API key). Lookup also fills Wikipedia, awards (Wikidata), Goodreads links when available, and marketplace ratings (TMDB / Open Library / Google Books). Attribution appears on `/recommendations` and detail pages when those sources are used.
 
 ## 8. Unsplash (trip covers)
 

@@ -13,11 +13,11 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 
 ## Movies & books — richer lookup
 
-- [ ] **IMDb / Goodreads metadata lookup** — pull genre and other film/book fields from IMDb and Goodreads (or a stable API proxy if direct scraping is blocked)
-- [ ] **Title dropdown** — when looking up a movie/book, show matching titles in a dropdown; choosing one auto-populates the form fields
-- [ ] **Cover/image dropdown** — cover lookup should also offer a dropdown of candidate images to pick from (not only the first match)
-- [ ] **Books: read month** — store/display **read month** instead of a full read date
-- [ ] **Books: edition publication date** — add the publication date of the edition you read
+- [x] **Metadata lookup (TMDB / Open Library)** — genre, director/author, cast, IMDb URL, covers (no IMDb/Goodreads scraping)
+- [x] **Title dropdown** — type in Title → live autocomplete suggestions → pick one to autofill
+- [x] **Cover/image dropdown** — pick among candidate posters/covers after a match
+- [x] **Books: read month** — store/display **read month** instead of a full read date
+- [x] **Books: edition publication date** — `edition_published_at` from Open Library editions (editable in admin)
 
 ## Admin UX
 
@@ -55,3 +55,4 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 - R2 bucket: `webpage-tomi-media` (binding `MEDIA`)
 - Docs: `README.md`, `DEPLOY.md`
 - IMDb/Goodreads: prefer official or permitted APIs; note ToS/rate limits when implementing lookup
+- Movie/book lookup uses TMDB + Open Library via `/api/admin/lookup` (search + select)

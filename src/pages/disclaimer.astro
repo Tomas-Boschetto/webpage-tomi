@@ -1,0 +1,157 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+export const prerender = false;
+---
+
+<BaseLayout
+	title="Disclaimer"
+	description="Non-commercial use statement and disclosures for APIs and data sources used on this site."
+>
+	<header class="section-head">
+		<h1>Disclaimer</h1>
+		<p>Non-commercial use and third-party data disclosures.</p>
+	</header>
+
+	<article class="about-prose disclaimer-prose">
+		<section>
+			<h2>Non-commercial use</h2>
+			<p>
+				This website is a personal project. I make absolutely no commercial use of any kind of this
+				website. It is not operated as a business, does not sell products or services, does not
+				carry paid advertising, and is not used to generate revenue.
+			</p>
+		</section>
+
+		<section>
+			<h2>Personal opinions</h2>
+			<p>
+				Recommendations, ratings, notes, and travel write-ups reflect my personal opinions and
+				experiences only. They are not affiliated with, endorsed by, or sponsored by any film studio,
+				publisher, award body, platform, or brand mentioned here.
+			</p>
+		</section>
+
+		<section>
+			<h2>APIs and data sources</h2>
+			<p>
+				Some metadata, images, and maps on this site are loaded from third-party services. Those
+				providers retain their rights in their data and branding. This site is not endorsed or
+				certified by any of them. Where a provider asks for attribution or a required notice, it
+				appears on relevant pages and is summarized below.
+			</p>
+
+			<h3>TMDB (The Movie Database)</h3>
+			<p>
+				Movie metadata and posters may come from
+				<a href="https://www.themoviedb.org/" rel="noopener noreferrer" target="_blank"
+					>TMDB<span class="sr-only"> (opens in a new tab)</span></a
+				>. This product uses the TMDB API but is not endorsed or certified by TMDB. Use of TMDB
+				materials is subject to TMDB’s terms and attribution requirements.
+			</p>
+
+			<h3>Open Library</h3>
+			<p>
+				Book metadata and covers may come from
+				<a href="https://openlibrary.org/" rel="noopener noreferrer" target="_blank"
+					>Open Library<span class="sr-only"> (opens in a new tab)</span></a
+				>. Open Library is a project of the Internet Archive.
+			</p>
+
+			<h3>Wikidata</h3>
+			<p>
+				Film and book award / accolade data and some Wikipedia link resolution may use
+				<a href="https://www.wikidata.org/" rel="noopener noreferrer" target="_blank"
+					>Wikidata<span class="sr-only"> (opens in a new tab)</span></a
+				>. Structured data from Wikidata is available under
+				<a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener noreferrer" target="_blank"
+					>CC0<span class="sr-only"> (opens in a new tab)</span></a
+				>. Credit is appreciated and shown where award data appears.
+			</p>
+
+			<h3>Wikipedia</h3>
+			<p>
+				“More info” / Wikipedia links point to articles on
+				<a href="https://www.wikipedia.org/" rel="noopener noreferrer" target="_blank"
+					>Wikipedia<span class="sr-only"> (opens in a new tab)</span></a
+				>. Wikipedia text is typically available under Creative Commons licenses; this site links to
+				Wikipedia pages rather than reproducing article text. Wikipedia® is a registered trademark of
+				the Wikimedia Foundation.
+			</p>
+
+			<h3>Unsplash</h3>
+			<p>
+				Some trip cover photos may come from
+				<a href="https://unsplash.com/" rel="noopener noreferrer" target="_blank"
+					>Unsplash<span class="sr-only"> (opens in a new tab)</span></a
+				>, subject to the Unsplash License and API guidelines.
+			</p>
+
+			<h3>OpenStreetMap &amp; Leaflet</h3>
+			<p>
+				Maps may use
+				<a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank"
+					>OpenStreetMap<span class="sr-only"> (opens in a new tab)</span></a
+				>
+				data (© OpenStreetMap contributors) and the
+				<a href="https://leafletjs.com/" rel="noopener noreferrer" target="_blank"
+					>Leaflet<span class="sr-only"> (opens in a new tab)</span></a
+				>
+				library. Map tiles and geodata remain subject to their respective licenses and terms.
+			</p>
+
+			<h3>IMDb, Goodreads &amp; marketplace ratings</h3>
+			<p>
+				Links to IMDb or Goodreads (when present) are outbound references only. Community scores shown
+				next to my personal rating may come from TMDB, IMDb (via OMDb when configured), Open Library,
+				and/or Google Books. Those scores belong to their respective platforms; this site does not
+				scrape prohibited sources for content and is not affiliated with them. My star rating is always
+				my own opinion.
+			</p>
+
+			<h3>Google Books</h3>
+			<p>
+				Some book community ratings may come from the
+				<a href="https://developers.google.com/books" rel="noopener noreferrer" target="_blank"
+					>Google Books API<span class="sr-only"> (opens in a new tab)</span></a
+				>. Google and Google Books are trademarks of Google LLC.
+			</p>
+
+			<h3>OMDb (optional)</h3>
+			<p>
+				When an OMDb API key is configured, film community ratings from IMDb may be fetched via
+				<a href="https://www.omdbapi.com/" rel="noopener noreferrer" target="_blank"
+					>OMDb<span class="sr-only"> (opens in a new tab)</span></a
+				>. OMDb is not affiliated with IMDb.
+			</p>
+		</section>
+
+		<section>
+			<h2>Trademarks</h2>
+			<p>
+				Names such as Oscar® / Academy Awards®, Golden Globe®, BAFTA, Pulitzer®, Booker Prize, and
+				other award titles are trademarks of their respective owners. Mentions and simple visual
+				markers on this site are for identification of publicly reported awards only and do not imply
+				endorsement, sponsorship, or affiliation.
+			</p>
+		</section>
+
+		<section>
+			<h2>Accuracy</h2>
+			<p>
+				Third-party data can be incomplete or outdated. I do not guarantee that titles, dates,
+				covers, awards, map locations, or linked pages are always correct. If something looks wrong,
+				feel free to
+				<a href="/contact">get in touch</a>.
+			</p>
+		</section>
+
+		<section>
+			<h2>Contact</h2>
+			<p>
+				Questions about this disclaimer or the site:
+				<a href="/contact">contact page</a>.
+			</p>
+		</section>
+	</article>
+</BaseLayout>

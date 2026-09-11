@@ -66,14 +66,15 @@ export async function createRecommendation(
 	await db
 		.prepare(
 			`INSERT INTO recommendations
-			 (id, type, title, summary, url, image_url, rating, genre, director, cast_members, imdb_url, goodreads_url, experienced_at, published)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 (id, type, title, summary, commentary, url, image_url, rating, genre, director, cast_members, imdb_url, goodreads_url, experienced_at, edition_published_at, original_published_at, accolades, external_ratings, published)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		)
 		.bind(
 			id,
 			input.type,
 			input.title.trim(),
 			input.summary.trim(),
+			emptyToNull(input.commentary),
 			emptyToNull(input.url),
 			emptyToNull(input.image_url),
 			input.rating ?? null,
@@ -83,6 +84,10 @@ export async function createRecommendation(
 			emptyToNull(input.imdb_url),
 			emptyToNull(input.goodreads_url),
 			emptyToNull(input.experienced_at),
+			emptyToNull(input.edition_published_at),
+			emptyToNull(input.original_published_at),
+			emptyToNull(input.accolades),
+			emptyToNull(input.external_ratings),
 			published,
 		)
 		.run();
@@ -105,15 +110,18 @@ export async function updateRecommendation(
 	await db
 		.prepare(
 			`UPDATE recommendations
-			 SET type = ?, title = ?, summary = ?, url = ?, image_url = ?,
+			 SET type = ?, title = ?, summary = ?, commentary = ?, url = ?, image_url = ?,
 			     rating = ?, genre = ?, director = ?, cast_members = ?, imdb_url = ?, goodreads_url = ?,
-			     experienced_at = ?, published = ?, updated_at = datetime('now')
+			     experienced_at = ?, edition_published_at = ?, original_published_at = ?,
+			     accolades = ?, external_ratings = ?,
+			     published = ?, updated_at = datetime('now')
 			 WHERE id = ?`,
 		)
 		.bind(
 			input.type,
 			input.title.trim(),
 			input.summary.trim(),
+			emptyToNull(input.commentary),
 			emptyToNull(input.url),
 			emptyToNull(input.image_url),
 			input.rating ?? null,
@@ -123,6 +131,10 @@ export async function updateRecommendation(
 			emptyToNull(input.imdb_url),
 			emptyToNull(input.goodreads_url),
 			emptyToNull(input.experienced_at),
+			emptyToNull(input.edition_published_at),
+			emptyToNull(input.original_published_at),
+			emptyToNull(input.accolades),
+			emptyToNull(input.external_ratings),
 			published,
 			id,
 		)
@@ -146,6 +158,7 @@ export function parseRecommendationInput(body: unknown): RecommendationInput | {
 		type,
 		title,
 		summary,
+		commentary,
 		url,
 		image_url,
 		rating,
@@ -156,6 +169,10 @@ export function parseRecommendationInput(body: unknown): RecommendationInput | {
 		imdb_url,
 		goodreads_url,
 		experienced_at,
+		edition_published_at,
+		original_published_at,
+		accolades,
+		external_ratings,
 		published,
 	} = data;
 
@@ -166,14 +183,39 @@ export function parseRecommendationInput(body: unknown): RecommendationInput | {
 		return { error: 'title is required (max 200 chars)' };
 	}
 	if (typeof summary !== 'string' || summary.trim().length < 1 || summary.length > 2000) {
-		return { error: 'summary is required (max 2000 chars)' };
+		return { error: 'summary (synopsis) is required (max 2000 chars)' };
+	}
+	if (commentary != null && typeof commentary !== 'string') {
+		return { error: 'commentary must be a string' };
+	}
+	if (typeof commentary === 'string' && commentary.length > 4000) {
+		return { error: 'commentary max 4000 chars' };
 	}
 
 	const parsedRating = parseOptionalRating(rating);
 	if ('error' in parsedRating) return parsedRating;
 
-	const parsedDate = parseExperiencedAt(experienced_at);
+	const parsedDate = parseExperiencedAt(experienced_at, type === 'book');
 	if ('error' in parsedDate) return parsedDate;
+
+	const parsedEdition = parseOptionalEditionDate(edition_published_at);
+	if ('error' in parsedEdition) return parsedEdition;
+
+	const parsedOriginal = parseOptionalEditionDate(original_published_at, 'original_published_at');
+	if ('error' in parsedOriginal) return parsedOriginal;
+
+	if (accolades != null && typeof accolades !== 'string') {
+		return { error: 'accolades must be a string' };
+	}
+	if (typeof accolades === 'string' && accolades.length > 2500) {
+		return { error: 'accolades max 2500 chars' };
+	}
+	if (external_ratings != null && typeof external_ratings !== 'string') {
+		return { error: 'external_ratings must be a string' };
+	}
+	if (typeof external_ratings === 'string' && external_ratings.length > 2500) {
+		return { error: 'external_ratings max 2500 chars' };
+	}
 
 	for (const [label, value] of [
 		['url', url],
@@ -208,6 +250,7 @@ export function parseRecommendationInput(body: unknown): RecommendationInput | {
 		type,
 		title,
 		summary,
+		commentary: typeof commentary === 'string' ? commentary : null,
 		url: typeof url === 'string' ? url : null,
 		image_url: typeof image_url === 'string' ? image_url : null,
 		rating: parsedRating.value,
@@ -217,24 +260,67 @@ export function parseRecommendationInput(body: unknown): RecommendationInput | {
 		imdb_url: typeof imdb_url === 'string' ? imdb_url : null,
 		goodreads_url: typeof goodreads_url === 'string' ? goodreads_url : null,
 		experienced_at: parsedDate.value,
+		edition_published_at: parsedEdition.value,
+		original_published_at: parsedOriginal.value,
+		accolades: typeof accolades === 'string' ? accolades : null,
+		external_ratings: typeof external_ratings === 'string' ? external_ratings : null,
 		published: published === false || published === 0 ? false : true,
 	};
 }
 
-function parseExperiencedAt(value: unknown): { value: string } | { error: string } {
+function parseExperiencedAt(
+	value: unknown,
+	monthOnly: boolean,
+): { value: string } | { error: string } {
 	if (value == null || value === '') {
 		return { error: 'experienced_at (date watched/read) is required' };
 	}
 	if (typeof value !== 'string') {
 		return { error: 'experienced_at must be a date string' };
 	}
-	const day = value.trim().slice(0, 10);
+	const raw = value.trim();
+	if (monthOnly) {
+		const month = /^\d{4}-\d{2}$/.test(raw) ? raw : /^\d{4}-\d{2}-\d{2}$/.test(raw.slice(0, 10))
+			? raw.slice(0, 7)
+			: '';
+		if (!month) {
+			return { error: 'experienced_at must be a month (YYYY-MM) for books' };
+		}
+		const day = `${month}-01`;
+		const date = new Date(`${day}T12:00:00`);
+		if (Number.isNaN(date.getTime())) {
+			return { error: 'experienced_at must be a valid month' };
+		}
+		return { value: day };
+	}
+	const day = raw.slice(0, 10);
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
 		return { error: 'experienced_at must be a valid date (YYYY-MM-DD)' };
 	}
 	const date = new Date(`${day}T12:00:00`);
 	if (Number.isNaN(date.getTime())) {
 		return { error: 'experienced_at must be a valid date' };
+	}
+	return { value: day };
+}
+
+function parseOptionalEditionDate(
+	value: unknown,
+	field = 'edition_published_at',
+): { value: string | null } | { error: string } {
+	if (value == null || value === '') return { value: null };
+	if (typeof value !== 'string') {
+		return { error: `${field} must be a date string` };
+	}
+	const raw = value.trim();
+	let day: string;
+	if (/^\d{4}$/.test(raw)) day = `${raw}-01-01`;
+	else if (/^\d{4}-\d{2}$/.test(raw)) day = `${raw}-01`;
+	else if (/^\d{4}-\d{2}-\d{2}$/.test(raw.slice(0, 10))) day = raw.slice(0, 10);
+	else return { error: `${field} must be YYYY, YYYY-MM, or YYYY-MM-DD` };
+	const date = new Date(`${day}T12:00:00`);
+	if (Number.isNaN(date.getTime())) {
+		return { error: `${field} must be a valid date` };
 	}
 	return { value: day };
 }
