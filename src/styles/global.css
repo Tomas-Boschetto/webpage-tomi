@@ -187,6 +187,7 @@ p {
 	max-width: var(--max);
 	margin: 0 auto;
 	padding: 0 var(--space) 4rem;
+	scroll-margin-top: 5rem;
 }
 
 .site-footer {

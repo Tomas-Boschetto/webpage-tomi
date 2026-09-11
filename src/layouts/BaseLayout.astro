@@ -110,5 +110,17 @@ const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 				</nav>
 			</div>
 		</footer>
+		<script>
+			// Safari often won't move focus to #main via hash alone; make skip reliable.
+			document.querySelector('.skip-link')?.addEventListener('click', (event) => {
+				const main = document.getElementById('main');
+				if (!(main instanceof HTMLElement)) return;
+				event.preventDefault();
+				main.focus({ preventScroll: true });
+				const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+				main.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+				history.replaceState(null, '', `${location.pathname}${location.search}#main`);
+			});
+		</script>
 	</body>
 </html>
