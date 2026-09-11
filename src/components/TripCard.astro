@@ -22,7 +22,7 @@ const countriesAttr = countryCodes.map((c) => c.toUpperCase()).join(',');
 			<div class="rec-item__media trip-card__media">
 				<img
 					src={trip.image_url!}
-					alt=""
+					alt={`Photo for trip ${trip.title}`}
 					width="210"
 					height="140"
 					loading="lazy"
@@ -36,5 +36,5 @@ const countriesAttr = countryCodes.map((c) => c.toUpperCase()).join(',');
 		<a class="rec-item__title-link" href={`/trips/${trip.id}`}>{trip.title}</a>
 	</h3>
 	<p class="rec-item__summary">{trip.summary}</p>
-	<a class="rec-item__link" href={`/trips/${trip.id}`}>View itinerary</a>
+	<a class="rec-item__link" href={`/trips/${trip.id}`}>View itinerary<span class="sr-only"> for {trip.title}</span></a>
 </article>

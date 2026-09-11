@@ -74,6 +74,7 @@ const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 		<title>{pageTitle}</title>
 	</head>
 	<body>
+		<a class="skip-link" href="#main">Skip to main content</a>
 		<header class="site-header">
 			<div class="site-header__inner">
 				<a class="brand" href="/">{siteName}</a>
@@ -93,7 +94,7 @@ const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 				</nav>
 			</div>
 		</header>
-		<main class="site-main" id="main">
+		<main class="site-main" id="main" tabindex="-1">
 			<slot />
 		</main>
 		<footer class="site-footer">
@@ -102,7 +103,9 @@ const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 					© {year}. {siteName}. Out there, and elsewhere in stories
 				</p>
 				<nav class="site-footer__links" aria-label="Footer">
-					<a href={linkedIn} rel="noopener noreferrer" target="_blank">Follow on LinkedIn</a>
+					<a href={linkedIn} rel="noopener noreferrer" target="_blank"
+						>Follow on LinkedIn<span class="sr-only"> (opens in a new tab)</span></a
+					>
 					<a href="/contact">Get in touch</a>
 				</nav>
 			</div>

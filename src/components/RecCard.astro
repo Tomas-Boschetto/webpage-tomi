@@ -10,9 +10,11 @@ const { item } = Astro.props;
 const label = item.type === 'book' ? 'Book' : 'Movie';
 const creatorLabel = item.type === 'book' ? 'Author' : 'Director';
 const whenLabel = item.type === 'book' ? 'Read' : 'Watched';
+const coverKind = item.type === 'book' ? 'Cover' : 'Poster';
 const ratingText = formatRating(item.rating);
 const whenText = formatExperiencedAt(item.experienced_at);
 const hasCover = Boolean(item.image_url);
+const coverAlt = `${coverKind} of ${item.title}`;
 ---
 
 <article class:list={['rec-item', hasCover && 'rec-item--with-cover']}>
@@ -21,7 +23,7 @@ const hasCover = Boolean(item.image_url);
 			<div class="rec-item__media">
 				<img
 					src={item.image_url!}
-					alt=""
+					alt={coverAlt}
 					width="140"
 					height="210"
 					loading="lazy"
@@ -65,7 +67,7 @@ const hasCover = Boolean(item.image_url);
 		{
 			item.type === 'movie' && item.imdb_url && (
 				<a class="rec-item__link" href={item.imdb_url} rel="noopener noreferrer" target="_blank">
-					IMDb
+					IMDb<span class="sr-only"> for {item.title} (opens in a new tab)</span>
 				</a>
 			)
 		}
@@ -77,14 +79,14 @@ const hasCover = Boolean(item.image_url);
 					rel="noopener noreferrer"
 					target="_blank"
 				>
-					Goodreads
+					Goodreads<span class="sr-only"> for {item.title} (opens in a new tab)</span>
 				</a>
 			)
 		}
 		{
 			item.url && (
 				<a class="rec-item__link" href={item.url} rel="noopener noreferrer" target="_blank">
-					More info
+					More info<span class="sr-only"> about {item.title} (opens in a new tab)</span>
 				</a>
 			)
 		}

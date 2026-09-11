@@ -17,15 +17,15 @@ const siteKey = env.TURNSTILE_SITE_KEY || '';
 	<form class="form" id="contact-form" novalidate>
 		<label>
 			Name
-			<input type="text" name="name" required maxlength="120" autocomplete="name" />
+			<input type="text" name="name" required maxlength="120" autocomplete="name" aria-required="true" />
 		</label>
 		<label>
 			Email
-			<input type="email" name="email" required maxlength="200" autocomplete="email" />
+			<input type="email" name="email" required maxlength="200" autocomplete="email" aria-required="true" />
 		</label>
 		<label>
 			Message
-			<textarea name="message" required maxlength="4000"></textarea>
+			<textarea name="message" required maxlength="4000" aria-required="true"></textarea>
 		</label>
 
 		{
@@ -50,7 +50,9 @@ const siteKey = env.TURNSTILE_SITE_KEY || '';
 	<aside class="contact-aside">
 		<p>
 			Prefer social?
-			<a href={linkedIn} rel="noopener noreferrer" target="_blank">Follow me on LinkedIn</a>.
+			<a href={linkedIn} rel="noopener noreferrer" target="_blank"
+				>Follow me on LinkedIn<span class="sr-only"> (opens in a new tab)</span></a
+			>.
 		</p>
 	</aside>
 </BaseLayout>

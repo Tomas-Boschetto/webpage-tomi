@@ -46,8 +46,8 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 - Cloudflare Images transforms (resize/CDN) instead of browser-only resize
 - Auto-deploy from GitHub so merge to `main` ships without a local `npm run deploy`
 - [ ] **Multiple languages** — offer the site in different languages (i18n: UI copy, and decide how content in D1 is handled per locale)
-- [ ] **SEO / Google** — technical bits shipped (canonical, OG, sitemap, JSON-LD); still need **Search Console** verify + sitemap submit + request indexing
-- [ ] **Accessibility (vision-impaired)** — improve a11y: meaningful alt text, contrast, keyboard/focus, screen-reader labels, skip links, reduced-motion respect
+- [x] **SEO / Google** — technical bits shipped (canonical, OG, sitemap, JSON-LD); Search Console sitemap OK — wait for indexing
+- [ ] **Accessibility (vision-impaired)** — pass 1 in progress: skip link, focus styles, contrast, alts, reduced-motion, external-link announcements; more polish later (maps, admin)
 
 ## Reminders
 
