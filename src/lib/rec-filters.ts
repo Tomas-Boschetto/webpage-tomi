@@ -80,6 +80,82 @@ export function matchesGenre(item: Recommendation, genre: string | null): boolea
 	return tokens.includes(needle) || (item.genre || '').trim().toLowerCase() === needle;
 }
 
+/** Unique book authors from the `director` field (comma-separated). */
+export function extractAuthors(items: Recommendation[]): string[] {
+	return extractPeople(
+		items.filter((item) => item.type === 'book'),
+		(item) => item.director,
+	);
+}
+
+/** Unique movie directors from the `director` field. */
+export function extractDirectors(items: Recommendation[]): string[] {
+	return extractPeople(
+		items.filter((item) => item.type === 'movie'),
+		(item) => item.director,
+	);
+}
+
+/** Unique movie actors from `cast_members`. */
+export function extractActors(items: Recommendation[]): string[] {
+	return extractPeople(
+		items.filter((item) => item.type === 'movie'),
+		(item) => item.cast_members,
+	);
+}
+
+function extractPeople(
+	items: Recommendation[],
+	getField: (item: Recommendation) => string | null,
+): string[] {
+	const set = new Set<string>();
+	for (const item of items) {
+		const raw = getField(item);
+		if (!raw) continue;
+		for (const part of raw.split(/[,/;]/)) {
+			const label = part.trim();
+			if (label) set.add(label);
+		}
+	}
+	return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
+function peopleTokens(value: string | null): string[] {
+	if (!value) return [];
+	return value
+		.split(/[,/;]/)
+		.map((part) => part.trim().toLowerCase())
+		.filter(Boolean);
+}
+
+function matchesPersonField(
+	value: string | null,
+	needleRaw: string | null | undefined,
+): boolean {
+	if (!needleRaw?.trim()) return true;
+	const needle = needleRaw.trim().toLowerCase();
+	const tokens = peopleTokens(value);
+	return tokens.includes(needle) || (value || '').trim().toLowerCase() === needle;
+}
+
+export function matchesAuthor(item: Recommendation, author: string | null): boolean {
+	if (!author?.trim()) return true;
+	if (item.type !== 'book') return false;
+	return matchesPersonField(item.director, author);
+}
+
+export function matchesDirector(item: Recommendation, director: string | null): boolean {
+	if (!director?.trim()) return true;
+	if (item.type !== 'movie') return false;
+	return matchesPersonField(item.director, director);
+}
+
+export function matchesActor(item: Recommendation, actor: string | null): boolean {
+	if (!actor?.trim()) return true;
+	if (item.type !== 'movie') return false;
+	return matchesPersonField(item.cast_members, actor);
+}
+
 function dateKey(value: string | null | undefined): number {
 	if (!value) return 0;
 	const t = Date.parse(`${String(value).slice(0, 10)}T12:00:00`);
@@ -91,18 +167,27 @@ export function filterAndSortRecommendations(
 	options: {
 		genre?: string | null;
 		award?: string | null;
+		author?: string | null;
+		director?: string | null;
+		actor?: string | null;
 		minRating?: number | null;
 		sort?: RecSort;
 	},
 ): Recommendation[] {
 	const genre = options.genre?.trim() || null;
 	const award = options.award?.trim() || null;
+	const author = options.author?.trim() || null;
+	const director = options.director?.trim() || null;
+	const actor = options.actor?.trim() || null;
 	const minRating = options.minRating ?? null;
 	const sort = options.sort ?? 'newest';
 
 	const filtered = items.filter((item) => {
 		if (!matchesGenre(item, genre)) return false;
 		if (!matchesAccoladeInstitution(item, award)) return false;
+		if (!matchesAuthor(item, author)) return false;
+		if (!matchesDirector(item, director)) return false;
+		if (!matchesActor(item, actor)) return false;
 		if (minRating != null && (item.rating == null || item.rating < minRating)) return false;
 		return true;
 	});

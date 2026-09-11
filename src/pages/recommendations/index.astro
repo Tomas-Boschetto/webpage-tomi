@@ -7,6 +7,9 @@ import { env } from 'cloudflare:workers';
 import { listPublished } from '../../lib/db';
 import { listCountriesFromPublishedStops, listPublishedTripIdsForCountry } from '../../lib/countries';
 import {
+	extractActors,
+	extractAuthors,
+	extractDirectors,
 	extractGenres,
 	filterAndSortRecommendations,
 	parseMinRating,
@@ -29,6 +32,9 @@ const activeType: RecommendationType | undefined = isRecommendationType(typePara
 
 const genreParam = Astro.url.searchParams.get('genre')?.trim() || '';
 const awardParam = Astro.url.searchParams.get('award')?.trim() || '';
+const authorParam = Astro.url.searchParams.get('author')?.trim() || '';
+const directorParam = Astro.url.searchParams.get('director')?.trim() || '';
+const actorParam = Astro.url.searchParams.get('actor')?.trim() || '';
 const countryParam = Astro.url.searchParams.get('country')?.trim().toUpperCase() || '';
 const sortParam = Astro.url.searchParams.get('sort');
 const minRating = parseMinRating(Astro.url.searchParams.get('min_rating'));
@@ -38,9 +44,15 @@ const tripSort = parseTripSort(sortParam);
 const allMedia = showTravel ? [] : await listPublished(env.DB, activeType);
 const genres = extractGenres(allMedia);
 const awardInstitutions = extractAccoladeInstitutions(allMedia);
+const authors = extractAuthors(allMedia);
+const directors = extractDirectors(allMedia);
+const actors = extractActors(allMedia);
 const mediaItems = filterAndSortRecommendations(allMedia, {
 	genre: genreParam || null,
 	award: awardParam || null,
+	author: authorParam || null,
+	director: directorParam || null,
+	actor: actorParam || null,
 	minRating,
 	sort: recSort,
 });
@@ -48,7 +60,12 @@ const mediaItems = filterAndSortRecommendations(allMedia, {
 const allTrips = showTravel
 	? await listPublishedTrips(env.DB)
 	: !activeType
-		? genreParam || awardParam || minRating != null
+		? genreParam ||
+			  awardParam ||
+			  authorParam ||
+			  directorParam ||
+			  actorParam ||
+			  minRating != null
 			? []
 			: await listPublishedTrips(env.DB)
 		: [];
@@ -146,6 +163,51 @@ const showWikidataCredit = mediaItems.some(
 						))}
 					</select>
 				</label>
+				{
+					(activeType === 'book' || !activeType) && authors.length > 0 && (
+						<label class="rec-toolbar__field">
+							<span>Author</span>
+							<select name="author">
+								<option value="">All authors</option>
+								{authors.map((author) => (
+									<option value={author} selected={authorParam === author}>
+										{author}
+									</option>
+								))}
+							</select>
+						</label>
+					)
+				}
+				{
+					(activeType === 'movie' || !activeType) && directors.length > 0 && (
+						<label class="rec-toolbar__field">
+							<span>Director</span>
+							<select name="director">
+								<option value="">All directors</option>
+								{directors.map((director) => (
+									<option value={director} selected={directorParam === director}>
+										{director}
+									</option>
+								))}
+							</select>
+						</label>
+					)
+				}
+				{
+					(activeType === 'movie' || !activeType) && actors.length > 0 && (
+						<label class="rec-toolbar__field">
+							<span>Actor</span>
+							<select name="actor">
+								<option value="">All actors</option>
+								{actors.map((actor) => (
+									<option value={actor} selected={actorParam === actor}>
+										{actor}
+									</option>
+								))}
+							</select>
+						</label>
+					)
+				}
 				{
 					awardInstitutions.length > 0 && (
 						<label class="rec-toolbar__field">
