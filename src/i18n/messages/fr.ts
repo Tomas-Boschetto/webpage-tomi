@@ -46,7 +46,7 @@ export const fr: Record<MessageKey, string> = {
 	'about.p1':
 		'Bonjour, je suis Tomas. Amis et famille me connaissent comme Tomi, ou sous les nombreuses variantes créatives de mon prénom ou nom. Né en Argentine dans une famille aux racines italiennes, je suis ingénieur aérospatial avec une expérience dans différents rôles du secteur.',
 	'about.p2':
-		'Au-delà de l’aérospatial, la technologie a toujours été une grande passion, accompagnée d’une curiosité durable pour l’histoire, la géographie et le fonctionnement du monde. Ces intérêts mènent souvent dans de fascinants terriers du lapin.',
+		'Au-delà de l’aérospatial, la technologie a toujours été une grande passion, accompagnée d’une curiosité durable pour l’histoire, la géographie et le fonctionnement du monde. Ces intérêts mènent souvent à d’fascinantes explorations en profondeur.',
 	'about.p3': 'En ce moment, je vis à Miami avec ma belle épouse et nos deux chats.',
 
 	'contact.title': 'Contact',

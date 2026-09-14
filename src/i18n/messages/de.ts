@@ -46,7 +46,7 @@ export const de: Record<MessageKey, string> = {
 	'about.p1':
 		'Hallo, ich bin Tomas. Freunde und Familie kennen mich als Tomi oder unter den vielen kreativen Varianten meines Vor- oder Nachnamens. Geboren in Argentinien in einer Familie mit italienischen Wurzeln, bin ich Luft- und Raumfahrtingenieur mit Erfahrung in verschiedenen Rollen der Branche.',
 	'about.p2':
-		'Neben der Raumfahrt war Technik immer eine große Leidenschaft, begleitet von anhaltender Neugier auf Geschichte, Geografie und darauf, wie die Welt funktioniert. Diese Interessen führen oft in faszinierende Kaninchenbaue.',
+		'Neben der Raumfahrt war Technik immer eine große Leidenschaft, begleitet von anhaltender Neugier auf Geschichte, Geografie und darauf, wie die Welt funktioniert. Diese Interessen führen oft zu faszinierenden Vertiefungen.',
 	'about.p3': 'Derzeit lebe ich in Miami mit meiner wunderbaren Frau und unseren zwei Katzen.',
 
 	'contact.title': 'Kontakt',
