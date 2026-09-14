@@ -1,11 +1,11 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import TripMap from '../../components/TripMap.astro';
+import ItineraryStops from '../../components/ItineraryStops.astro';
 import { env } from 'cloudflare:workers';
-import { formatVisitedAt, getTripWithItems } from '../../lib/trips';
-import { isTransportMode } from '../../lib/types';
+import { getTripWithItems } from '../../lib/trips';
 import { DEFAULT_LOCALE, localizedPath, type Locale } from '../../i18n/locales';
-import { t, placeTypeLabel, transportModeLabel } from '../../i18n';
+import { t } from '../../i18n';
 import { localizeTripWithItems } from '../../lib/i18n-content';
 
 interface Props {
@@ -24,6 +24,8 @@ if (!trip) {
 }
 
 const travelHref = `${localizedPath(locale, '/recommendations')}?type=travel`;
+const hasMap =
+	Boolean(trip) && trip!.items.some((item) => item.lat != null && item.lng != null);
 ---
 
 {
@@ -51,100 +53,20 @@ const travelHref = `${localizedPath(locale, '/recommendations')}?type=travel`;
 				</p>
 			</header>
 
-			<TripMap items={trip.items} tripTitle={trip.title} locale={locale} />
-
 			{
 				trip.items.length === 0 ? (
 					<p class="empty">{t(locale, 'trip.emptyStops')}</p>
+				) : hasMap ? (
+					<section class="itinerary-split" data-itinerary-split>
+						<div class="itinerary-split__list" data-itinerary-list>
+							<ItineraryStops items={trip.items} locale={locale} />
+						</div>
+						<div class="itinerary-split__map">
+							<TripMap items={trip.items} tripTitle={trip.title} locale={locale} />
+						</div>
+					</section>
 				) : (
-					<ol class="itinerary">
-						{trip.items.map((item, index) => {
-							const hasPhoto = Boolean(item.image_url);
-							const mode = isTransportMode(item.transport_mode)
-								? item.transport_mode
-								: 'other';
-							const modeLabel = transportModeLabel(locale, mode);
-							const transitDetail = item.how_i_got_there?.trim() || '';
-							return (
-								<li
-									class:list={['itinerary__item', hasPhoto && 'itinerary__item--with-photo']}
-									id={`stop-${item.id}`}
-									tabindex="-1"
-									data-stop-id={item.lat != null && item.lng != null ? item.id : undefined}
-								>
-									<div class="itinerary__head">
-										<span class="badge">{placeTypeLabel(locale, item.place_type)}</span>
-										<h2 class="itinerary__place">{item.place_name}</h2>
-									</div>
-									<div class="itinerary__body">
-										<div class="itinerary__copy">
-											{item.visited_at && (
-												<p class="itinerary__when">
-													<strong>{t(locale, 'trip.visited')}:</strong>{' '}
-													{formatVisitedAt(item.visited_at, locale)}
-												</p>
-											)}
-											{index > 0 && (
-												<p class="itinerary__transit">
-													<strong>{t(locale, 'trip.howGotThere')}:</strong> {modeLabel}
-													{transitDetail ? ` — ${transitDetail}` : ''}
-												</p>
-											)}
-											{index === 0 && transitDetail && (
-												<p class="itinerary__transit">
-													<strong>{t(locale, 'trip.arrivalNotes')}:</strong>{' '}
-													{transitDetail}
-												</p>
-											)}
-											{item.lat != null && item.lng != null && (
-												<p class="itinerary__coords">
-													<button type="button" class="linkish" data-stop-id={item.id}>
-														{t(locale, 'trip.showOnMap')}
-													</button>
-													{' · '}
-													<a
-														class="linkish"
-														href={`https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`}
-														rel="noopener noreferrer"
-														target="_blank"
-													>
-														{t(locale, 'trip.openMaps')}
-														<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
-													</a>
-												</p>
-											)}
-											{item.notes && <p class="itinerary__notes">{item.notes}</p>}
-											{item.url && (
-												<p class="itinerary__link-wrap">
-													<a
-														class="rec-item__link"
-														href={item.url}
-														rel="noopener noreferrer"
-														target="_blank"
-													>
-														{t(locale, 'trip.link')}
-														<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
-													</a>
-												</p>
-											)}
-										</div>
-										{hasPhoto && (
-											<figure class="itinerary__photo">
-												<img
-													src={item.image_url!}
-													alt={t(locale, 'trip.photoAlt', { place: item.place_name })}
-													loading="lazy"
-													decoding="async"
-													width="640"
-													height="427"
-												/>
-											</figure>
-										)}
-									</div>
-								</li>
-							);
-						})}
-					</ol>
+					<ItineraryStops items={trip.items} locale={locale} />
 				)
 			}
 		</BaseLayout>

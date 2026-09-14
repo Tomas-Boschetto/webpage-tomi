@@ -31,8 +31,8 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 
 ## Trip itinerary + map (public)
 
-- [ ] **Split layout** — itinerary list beside the OpenStreetMap (same idea as Travel tab: list + map)
-- [ ] **Hover highlight** — hovering a map pin highlights the matching stop in the list (and vice versa if natural)
+- [x] **Split layout** — itinerary list beside the OpenStreetMap (same idea as Travel tab: list + map)
+- [x] **Hover highlight** — hovering a map pin highlights the matching stop in the list (and vice versa if natural)
 - [x] **Routes between stops** — draw paths between points when possible; style/label by **transport mode**
 - [x] **Replace “How I got there”** — structured **transport mode** on map/itinerary; free-text details optional
 - [x] **Export** — Open in Google Maps + GPX download on trip pages
