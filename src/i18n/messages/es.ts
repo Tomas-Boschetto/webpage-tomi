@@ -9,7 +9,7 @@ export const es: Record<MessageKey, string> = {
 	'nav.contact': 'Contacto',
 	'nav.language': 'Idioma',
 	'footer.nav': 'Pie de página',
-	'footer.tagline': 'Allá afuera, y en otra parte en las historias',
+	'footer.tagline': 'Allá afuera en el mundo, y en las historias',
 	'footer.linkedin': 'Sígueme en LinkedIn',
 	'footer.contact': 'Escríbeme',
 	'footer.disclaimer': 'Aviso legal',
@@ -44,7 +44,7 @@ export const es: Record<MessageKey, string> = {
 	'about.title': 'Sobre mí',
 	'about.description': 'Una breve presentación de Tomas Boschetto.',
 	'about.p1':
-		'Hola, soy Tomas. Amigos y familia me conocen como Tomi, o por las muchas variantes creativas de mi nombre o apellido. Nacido en Argentina en una familia de raíces italianas, soy ingeniero aeroespacial con experiencia en distintos roles de la industria.',
+		'Hola, soy Tomas. Amigos y familia me llaman Tomi — o inventan otras formas de decir mi nombre. Nací en Argentina, en una familia de raíces italianas; soy ingeniero aeroespacial y he trabajado en distintos roles de la industria.',
 	'about.p2':
 		'Más allá de lo aeroespacial, la tecnología siempre ha sido una gran pasión, junto a una curiosidad constante por la historia, la geografía y cómo funciona el mundo. Esos intereses suelen llevarme a profundizar en muchos temas fascinantes.',
 	'about.p3': 'Ahora vivo en Miami con mi hermosa esposa y nuestros dos gatos.',

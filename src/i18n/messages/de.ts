@@ -9,7 +9,7 @@ export const de: Record<MessageKey, string> = {
 	'nav.contact': 'Kontakt',
 	'nav.language': 'Sprache',
 	'footer.nav': 'Fußzeile',
-	'footer.tagline': 'Dort draußen, und anderswo in Geschichten',
+	'footer.tagline': 'Dort draußen in der Welt — und in Geschichten',
 	'footer.linkedin': 'Auf LinkedIn folgen',
 	'footer.contact': 'Schreib mir',
 	'footer.disclaimer': 'Hinweis',
@@ -44,7 +44,7 @@ export const de: Record<MessageKey, string> = {
 	'about.title': 'Über mich',
 	'about.description': 'Eine kurze Vorstellung von Tomas Boschetto.',
 	'about.p1':
-		'Hallo, ich bin Tomas. Freunde und Familie kennen mich als Tomi oder unter den vielen kreativen Varianten meines Vor- oder Nachnamens. Geboren in Argentinien in einer Familie mit italienischen Wurzeln, bin ich Luft- und Raumfahrtingenieur mit Erfahrung in verschiedenen Rollen der Branche.',
+		'Hallo, ich bin Tomas. Freunde und Familie nennen mich Tomi — oder greifen zu den vielen kreativen Varianten meines Vor- und Nachnamens. Geboren in Argentinien in einer Familie mit italienischen Wurzeln, bin ich Luft- und Raumfahrtingenieur und habe verschiedene Rollen in der Branche übernommen.',
 	'about.p2':
 		'Neben der Raumfahrt war Technik immer eine große Leidenschaft, begleitet von anhaltender Neugier auf Geschichte, Geografie und darauf, wie die Welt funktioniert. Diese Interessen führen oft zu faszinierenden Vertiefungen.',
 	'about.p3': 'Derzeit lebe ich in Miami mit meiner wunderbaren Frau und unseren zwei Katzen.',
