@@ -1,25 +1,29 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { DEFAULT_LOCALE, type Locale } from '../i18n/locales';
+import { t } from '../i18n';
+
+interface Props {
+	locale?: Locale;
+}
 
 export const prerender = false;
+
+const locale: Locale = Astro.props.locale || (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
 ---
 
-<BaseLayout title="About me" description="A short introduction to Tomas Boschetto.">
+<BaseLayout
+	locale={locale}
+	title={t(locale, 'about.title')}
+	description={t(locale, 'about.description')}
+>
 	<header class="section-head">
-		<h1>About me</h1>
+		<h1>{t(locale, 'about.title')}</h1>
 	</header>
 
 	<article class="about-prose">
-		<p>
-			Hello, I’m Tomas. Friends and family know me as Tomi, or through the many creative
-			variations of my first or last name. Born in Argentina to a family with Italian roots, I’m an
-			Aerospace Engineer with experience across different roles within the industry.
-		</p>
-		<p>
-			Beyond aerospace, technology has always been a major passion, accompanied by an enduring
-			curiosity for history, geography, and how the world works. These interests tend to lead down
-			many fascinating rabbit holes.
-		</p>
-		<p>At present, I live in Miami with my beautiful wife and our two cats.</p>
+		<p>{t(locale, 'about.p1')}</p>
+		<p>{t(locale, 'about.p2')}</p>
+		<p>{t(locale, 'about.p3')}</p>
 	</article>
 </BaseLayout>

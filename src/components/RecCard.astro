@@ -6,25 +6,30 @@ import {
 	formatGenreBrief,
 	formatRating,
 } from '../lib/types';
+import { DEFAULT_LOCALE, localizedPath, type Locale } from '../i18n/locales';
+import { t } from '../i18n';
 
 interface Props {
 	item: Recommendation;
 	/** When true, card stays out of view until infinite-scroll reveals it. */
 	deferred?: boolean;
+	locale?: Locale;
 }
 
+const locale: Locale = Astro.props.locale || DEFAULT_LOCALE;
 const { item, deferred = false } = Astro.props;
-const creatorLabel = item.type === 'book' ? 'Author' : 'Director';
-const whenLabel = item.type === 'book' ? 'Read' : 'Watched';
-const coverKind = item.type === 'book' ? 'Cover' : 'Poster';
+const creatorLabel = item.type === 'book' ? t(locale, 'recs.author') : t(locale, 'recs.director');
+const whenLabel = item.type === 'book' ? t(locale, 'recs.read') : t(locale, 'recs.watched');
 const ratingText = formatRating(item.rating);
 const whenText = formatExperiencedAt(item.experienced_at, { monthOnly: item.type === 'book' });
 const releaseText = formatEditionPublished(item.edition_published_at);
 const originalText = formatEditionPublished(item.original_published_at);
 const genreBrief = formatGenreBrief(item.genre);
 const hasCover = Boolean(item.image_url);
-const coverAlt = `${coverKind} of ${item.title}`;
-const detailHref = `/recommendations/${item.id}`;
+const coverAlt = t(locale, item.type === 'book' ? 'recs.coverOf' : 'recs.posterOf', {
+	title: item.title,
+});
+const detailHref = localizedPath(locale, `/recommendations/${item.id}`);
 const blurb = item.commentary?.trim() || '';
 const blurbShort = blurb.length > 220 ? `${blurb.slice(0, 217).trimEnd()}…` : blurb;
 ---
@@ -50,7 +55,7 @@ const blurbShort = blurb.length > 220 ? `${blurb.slice(0, 217).trimEnd()}…` : 
 	</h3>
 	{
 		ratingText && (
-			<p class="rec-item__rating" aria-label={`Rated ${ratingText}`}>
+			<p class="rec-item__rating" aria-label={t(locale, 'recs.ratedAria', { rating: ratingText })}>
 				<span class="stars" aria-hidden="true">
 					{'★'.repeat(Math.round(item.rating ?? 0))}
 					{'☆'.repeat(Math.max(0, 5 - Math.round(item.rating ?? 0)))}
@@ -73,18 +78,22 @@ const blurbShort = blurb.length > 220 ? `${blurb.slice(0, 217).trimEnd()}…` : 
 	}
 	{originalText && (
 		<p class="rec-item__when">
-			<strong>{item.type === 'book' ? 'First published' : 'Released'}:</strong> {originalText}
+			<strong>
+				{item.type === 'book' ? t(locale, 'recs.firstPublished') : t(locale, 'recs.released')}:
+			</strong>{' '}
+			{originalText}
 		</p>
 	)}
 	{releaseText && item.type === 'book' && releaseText !== originalText && (
 		<p class="rec-item__when">
-			<strong>Edition:</strong> {releaseText}
+			<strong>{t(locale, 'recs.edition')}:</strong> {releaseText}
 		</p>
 	)}
 	{blurbShort && <p class="rec-item__summary">{blurbShort}</p>}
 	<p class="rec-item__links">
 		<a class="rec-item__link" href={detailHref}>
-			View details<span class="sr-only"> for {item.title}</span>
+			{t(locale, 'recs.viewDetails')}
+			<span class="sr-only">{t(locale, 'recs.srForTitle', { title: item.title })}</span>
 		</a>
 	</p>
 </article>

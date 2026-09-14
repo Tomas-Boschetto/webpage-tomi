@@ -73,6 +73,16 @@ npm run deploy
 
 (Merging to GitHub alone does not update the live Worker.)
 
+### Internationalization (i18n)
+
+Public locales: `en` (default, unprefixed), `it`, `es`, `de`, `fr`.
+
+- UI strings: `src/i18n/messages/{en,it,es,de,fr}.ts`
+- Content: D1 tables `recommendation_translations`, `trip_translations`, `itinerary_item_translations` (migration `0016` + seed `0017`)
+- English fields on base tables remain the canonical fallback
+- Admin stays English; edit forms expose **Translations** tabs for IT/ES/DE/FR
+- Sitemap emits alternate `hreflang` links for each locale
+
 ## 4. Cloudflare Access (admin)
 
 1. Zero Trust → Access → Applications → Add application → Self-hosted

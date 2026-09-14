@@ -486,6 +486,27 @@ const countries = authorized
 							<button class="btn btn--primary" type="submit">${mode === 'edit' ? 'Save changes' : 'Create trip'}</button>
 							<button class="btn btn--ghost" type="button" data-action="cancel">Cancel</button>
 						</div>
+						${
+							mode === 'edit' && id
+								? `
+						<section class="admin-i18n" data-i18n-panel data-entity="trip" data-id="${escapeHtml(id)}">
+							<h3 class="admin-subhead">Translations</h3>
+							<p class="admin-map-picker__hint">English is saved above. Other languages fall back to English when empty.</p>
+							<div class="admin-i18n__tabs" role="tablist" aria-label="Translation language">
+								<button type="button" class="btn btn--ghost is-active" data-i18n-locale="it" role="tab" aria-selected="true">IT</button>
+								<button type="button" class="btn btn--ghost" data-i18n-locale="es" role="tab" aria-selected="false">ES</button>
+								<button type="button" class="btn btn--ghost" data-i18n-locale="de" role="tab" aria-selected="false">DE</button>
+								<button type="button" class="btn btn--ghost" data-i18n-locale="fr" role="tab" aria-selected="false">FR</button>
+							</div>
+							<label>Translated title<input type="text" data-i18n-field="title" maxlength="200" /></label>
+							<label>Translated summary<textarea data-i18n-field="summary" maxlength="4000" rows="3"></textarea></label>
+							<div class="form__actions">
+								<button class="btn btn--primary" type="button" data-i18n-save>Save translation</button>
+								<p class="form__status" data-i18n-status role="status" aria-live="polite"></p>
+							</div>
+						</section>`
+								: ''
+						}
 					</form>
 				`;
 			}
@@ -599,6 +620,29 @@ const countries = authorized
 							<button class="btn btn--ghost" type="button" data-action="cancel">Cancel</button>
 							<p class="form__status" data-stop-status role="status" aria-live="polite"></p>
 						</div>
+						${
+							mode === 'edit' && id
+								? `
+						<section class="admin-i18n" data-i18n-panel data-entity="stop" data-id="${escapeHtml(id)}">
+							<h3 class="admin-subhead">Translations</h3>
+							<p class="admin-map-picker__hint">English is saved above. Other languages fall back to English when empty.</p>
+							<div class="admin-i18n__tabs" role="tablist" aria-label="Translation language">
+								<button type="button" class="btn btn--ghost is-active" data-i18n-locale="it" role="tab" aria-selected="true">IT</button>
+								<button type="button" class="btn btn--ghost" data-i18n-locale="es" role="tab" aria-selected="false">ES</button>
+								<button type="button" class="btn btn--ghost" data-i18n-locale="de" role="tab" aria-selected="false">DE</button>
+								<button type="button" class="btn btn--ghost" data-i18n-locale="fr" role="tab" aria-selected="false">FR</button>
+							</div>
+							<label>Translated place name<input type="text" data-i18n-field="place_name" maxlength="200" /></label>
+							<label>Translated country name<input type="text" data-i18n-field="country_name" maxlength="120" /></label>
+							<label>Translated transport details<input type="text" data-i18n-field="how_i_got_there" maxlength="500" /></label>
+							<label>Translated notes<textarea data-i18n-field="notes" maxlength="2000" rows="3"></textarea></label>
+							<div class="form__actions">
+								<button class="btn btn--primary" type="button" data-i18n-save>Save translation</button>
+								<p class="form__status" data-i18n-status role="status" aria-live="polite"></p>
+							</div>
+						</section>`
+								: ''
+						}
 					</form>
 				`;
 			}
@@ -808,6 +852,107 @@ const countries = authorized
 				});
 
 				void loadStopCoverChoices();
+				void mountI18nPanel(host);
+			}
+
+			/**
+			 * @param {HTMLElement} host
+			 */
+			async function mountI18nPanel(host) {
+				const panel = host.querySelector('[data-i18n-panel]');
+				if (!(panel instanceof HTMLElement)) return;
+				const entity = panel.dataset.entity;
+				const id = panel.dataset.id;
+				if (!entity || !id) return;
+
+				const endpoint =
+					entity === 'trip'
+						? `/api/admin/trips/${id}/translations`
+						: `/api/admin/itinerary/${id}/translations`;
+
+				/** @type {Record<string, any>} */
+				let byLocale = {};
+				try {
+					const res = await fetch(endpoint);
+					const json = await res.json();
+					if (res.ok) {
+						for (const row of json.translations || []) {
+							byLocale[row.locale] = row;
+						}
+					}
+				} catch {
+					/* ignore */
+				}
+
+				let active = 'it';
+				const statusEl = panel.querySelector('[data-i18n-status]');
+				const fieldNames = [
+					'title',
+					'summary',
+					'place_name',
+					'notes',
+					'how_i_got_there',
+					'country_name',
+				];
+				/** @type {Record<string, Element | null>} */
+				const fields = Object.fromEntries(
+					fieldNames.map((key) => [key, panel.querySelector(`[data-i18n-field="${key}"]`)]),
+				);
+
+				function setStatus(message, ok = true) {
+					if (!statusEl) return;
+					statusEl.className = `form__status ${ok ? 'form__status--ok' : 'form__status--err'}`;
+					statusEl.textContent = message;
+				}
+
+				function fillFields() {
+					const row = byLocale[active] || {};
+					for (const [key, el] of Object.entries(fields)) {
+						if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+							el.value = row[key] || '';
+						}
+					}
+				}
+
+				panel.querySelectorAll('[data-i18n-locale]').forEach((btn) => {
+					btn.addEventListener('click', () => {
+						active = btn.getAttribute('data-i18n-locale') || 'it';
+						panel.querySelectorAll('[data-i18n-locale]').forEach((b) => {
+							const on = b.getAttribute('data-i18n-locale') === active;
+							b.classList.toggle('is-active', on);
+							b.setAttribute('aria-selected', on ? 'true' : 'false');
+						});
+						fillFields();
+						setStatus('');
+					});
+				});
+
+				panel.querySelector('[data-i18n-save]')?.addEventListener('click', async () => {
+					/** @type {Record<string, string>} */
+					const body = { locale: active };
+					for (const [key, el] of Object.entries(fields)) {
+						if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+							body[key] = el.value;
+						}
+					}
+					const res = await fetch(endpoint, {
+						method: 'PUT',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(body),
+					});
+					const json = await res.json();
+					if (!res.ok) {
+						setStatus(json.error || 'Save failed.', false);
+						return;
+					}
+					byLocale = {};
+					for (const row of json.translations || []) {
+						byLocale[row.locale] = row;
+					}
+					setStatus(`Saved ${active.toUpperCase()} translation.`);
+				});
+
+				fillFields();
 			}
 
 			/**
@@ -1048,6 +1193,8 @@ const countries = authorized
 					const stops = stopsByTrip[tripId] || [];
 					syncTripStopCount(tripId, stops.length);
 				});
+
+				void mountI18nPanel(host);
 			}
 
 			async function loadStops(tripId) {

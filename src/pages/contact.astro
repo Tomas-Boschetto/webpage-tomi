@@ -1,30 +1,53 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { env } from 'cloudflare:workers';
+import { DEFAULT_LOCALE, type Locale } from '../i18n/locales';
+import { t } from '../i18n';
+
+interface Props {
+	locale?: Locale;
+}
 
 export const prerender = false;
 
+const locale: Locale = Astro.props.locale || (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
 const linkedIn = env.LINKEDIN_URL || 'https://www.linkedin.com/in/tomasboschetto/';
 const siteKey = env.TURNSTILE_SITE_KEY || '';
+const msgSending = t(locale, 'contact.sending');
+const msgSent = t(locale, 'contact.sent');
+const msgError = t(locale, 'contact.error');
+const msgNetwork = t(locale, 'contact.network');
 ---
 
-<BaseLayout title="Contact" description="Get in touch or follow on LinkedIn.">
+<BaseLayout
+	locale={locale}
+	title={t(locale, 'contact.title')}
+	description={t(locale, 'contact.description')}
+>
 	<header class="section-head">
-		<h1>Contact</h1>
-		<p>Say hello, ask about a recommendation, or just introduce yourself.</p>
+		<h1>{t(locale, 'contact.title')}</h1>
+		<p>{t(locale, 'contact.lead')}</p>
 	</header>
 
-	<form class="form" id="contact-form" novalidate>
+	<form
+		class="form"
+		id="contact-form"
+		novalidate
+		data-msg-sending={msgSending}
+		data-msg-sent={msgSent}
+		data-msg-error={msgError}
+		data-msg-network={msgNetwork}
+	>
 		<label>
-			Name
+			{t(locale, 'contact.name')}
 			<input type="text" name="name" required maxlength="120" autocomplete="name" aria-required="true" />
 		</label>
 		<label>
-			Email
+			{t(locale, 'contact.email')}
 			<input type="email" name="email" required maxlength="200" autocomplete="email" aria-required="true" />
 		</label>
 		<label>
-			Message
+			{t(locale, 'contact.message')}
 			<textarea name="message" required maxlength="4000" aria-required="true"></textarea>
 		</label>
 
@@ -40,16 +63,19 @@ const siteKey = env.TURNSTILE_SITE_KEY || '';
 		}
 
 		<div class="form__actions">
-			<button class="btn btn--primary" type="submit">Send message</button>
+			<button class="btn btn--primary" type="submit">{t(locale, 'contact.send')}</button>
 			<p class="form__status" id="contact-status" role="status" aria-live="polite"></p>
 		</div>
 	</form>
 
 	<aside class="contact-aside">
 		<p>
-			Prefer social?
+			{t(locale, 'contact.prefer')}{' '}
 			<a href={linkedIn} rel="noopener noreferrer" target="_blank"
-				>Follow me on LinkedIn<span class="sr-only"> (opens in a new tab)</span></a
+				>{t(locale, 'contact.follow')}<span class="sr-only">
+					{' '}
+					{t(locale, 'footer.newTab')}</span
+				></a
 			>.
 		</p>
 	</aside>
@@ -67,10 +93,10 @@ const siteKey = env.TURNSTILE_SITE_KEY || '';
 
 	form?.addEventListener('submit', async (event) => {
 		event.preventDefault();
-		if (!statusEl) return;
+		if (!statusEl || !form) return;
 
 		statusEl.className = 'form__status';
-		statusEl.textContent = 'Sending…';
+		statusEl.textContent = form.dataset.msgSending || 'Sending…';
 
 		const data = new FormData(form);
 		const turnstileInput = form.querySelector(
@@ -94,16 +120,16 @@ const siteKey = env.TURNSTILE_SITE_KEY || '';
 
 			if (!res.ok) {
 				statusEl.className = 'form__status form__status--err';
-				statusEl.textContent = json.error || 'Something went wrong.';
+				statusEl.textContent = json.error || form.dataset.msgError || 'Something went wrong.';
 				return;
 			}
 
 			statusEl.className = 'form__status form__status--ok';
-			statusEl.textContent = 'Message sent. Thanks for writing.';
+			statusEl.textContent = form.dataset.msgSent || 'Message sent.';
 			form.reset();
 		} catch {
 			statusEl.className = 'form__status form__status--err';
-			statusEl.textContent = 'Network error. Try again in a moment.';
+			statusEl.textContent = form.dataset.msgNetwork || 'Network error.';
 		}
 	});
 </script>

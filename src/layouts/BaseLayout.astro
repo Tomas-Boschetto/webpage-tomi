@@ -2,6 +2,16 @@
 import '../styles/global.css';
 import { env } from 'cloudflare:workers';
 import { absoluteUrl, getSiteUrl } from '../lib/site';
+import {
+	DEFAULT_LOCALE,
+	LOCALES,
+	LOCALE_LABELS,
+	OG_LOCALE,
+	localizedPath,
+	stripLocalePrefix,
+	type Locale,
+} from '../i18n/locales';
+import { t } from '../i18n';
 
 interface Props {
 	title?: string;
@@ -12,28 +22,50 @@ interface Props {
 	robots?: string;
 	/** Optional JSON-LD object(s) for structured data. */
 	jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+	/** Active UI locale (defaults from URL / en). */
+	locale?: Locale;
 }
 
 const siteName = env.SITE_NAME || 'Tomas Boschetto';
 const linkedIn = env.LINKEDIN_URL || 'https://www.linkedin.com/in/tomasboschetto/';
 const siteUrl = getSiteUrl(env);
+const locale: Locale =
+	Astro.props.locale ||
+	(Astro.currentLocale as Locale | undefined) ||
+	DEFAULT_LOCALE;
 const {
 	title = siteName,
-	description = 'Personal movie, book, and travel recommendations.',
+	description = t(locale, 'layout.defaultDescription'),
 	image = '/images/hero-ar.jpg',
 	robots = 'index, follow',
 	jsonLd,
 } = Astro.props;
 const pageTitle = title === siteName ? siteName : `${title} · ${siteName}`;
 const path = Astro.url.pathname;
-const canonical = absoluteUrl(siteUrl, path === '/' ? '/' : path.replace(/\/+$/, '') || '/');
+const pathNoLocale = stripLocalePrefix(path);
+const search = Astro.url.search;
+const canonical = absoluteUrl(
+	siteUrl,
+	path === '/' || pathNoLocale === '/' ? localizedPath(locale, '/') : localizedPath(locale, pathNoLocale),
+);
 const ogImage = absoluteUrl(siteUrl, image);
 const year = new Date().getFullYear();
 const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+
+const homeHref = localizedPath(locale, '/');
+const aboutHref = localizedPath(locale, '/about');
+const recsHref = localizedPath(locale, '/recommendations') + '?type=movie';
+const contactHref = localizedPath(locale, '/contact');
+const disclaimerHref = localizedPath(locale, '/disclaimer');
+
+const isHome = pathNoLocale === '/' || pathNoLocale === '';
+const isAbout = pathNoLocale.startsWith('/about');
+const isRecs = pathNoLocale.startsWith('/recommendations') || pathNoLocale.startsWith('/trips');
+const isContact = pathNoLocale.startsWith('/contact');
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={locale}>
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" href="/site-mark-32.png" type="image/png" sizes="32x32" />
@@ -46,13 +78,40 @@ const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 		<meta name="robots" content={robots} />
 		<link rel="canonical" href={canonical} />
 
+		{
+			LOCALES.map((loc) => (
+				<link
+					rel="alternate"
+					hreflang={loc}
+					href={absoluteUrl(
+						siteUrl,
+						(pathNoLocale === '/' ? localizedPath(loc, '/') : localizedPath(loc, pathNoLocale)) +
+							search,
+					)}
+				/>
+			))
+		}
+		<link
+			rel="alternate"
+			hreflang="x-default"
+			href={absoluteUrl(
+				siteUrl,
+				(pathNoLocale === '/' ? '/' : pathNoLocale) + search,
+			)}
+		/>
+
 		<meta property="og:type" content="website" />
 		<meta property="og:site_name" content={siteName} />
 		<meta property="og:title" content={pageTitle} />
 		<meta property="og:description" content={description} />
 		<meta property="og:url" content={canonical} />
 		<meta property="og:image" content={ogImage} />
-		<meta property="og:locale" content="en_US" />
+		<meta property="og:locale" content={OG_LOCALE[locale]} />
+		{
+			LOCALES.filter((l) => l !== locale).map((loc) => (
+				<meta property="og:locale:alternate" content={OG_LOCALE[loc]} />
+			))
+		}
 
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:title" content={pageTitle} />
@@ -74,23 +133,41 @@ const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 		<title>{pageTitle}</title>
 	</head>
 	<body>
-		<a class="skip-link" href="#main">Skip to main content</a>
+		<a class="skip-link" href="#main">{t(locale, 'skip.main')}</a>
 		<header class="site-header">
 			<div class="site-header__inner">
-				<a class="brand" href="/">{siteName}</a>
-				<nav class="nav" aria-label="Primary">
-					<a href="/" aria-current={path === '/' ? 'page' : undefined}>Home</a>
-					<a href="/about" aria-current={path.startsWith('/about') ? 'page' : undefined}
-						>About me</a
+				<a class="brand" href={homeHref}>{siteName}</a>
+				<nav class="nav" aria-label={t(locale, 'nav.primary')}>
+					<a href={homeHref} aria-current={isHome ? 'page' : undefined}>{t(locale, 'nav.home')}</a>
+					<a href={aboutHref} aria-current={isAbout ? 'page' : undefined}
+						>{t(locale, 'nav.about')}</a
 					>
-					<a
-						href="/recommendations?type=movie"
-						aria-current={path.startsWith('/recommendations') ? 'page' : undefined}
-						>Recommendations</a
+					<a href={recsHref} aria-current={isRecs ? 'page' : undefined}
+						>{t(locale, 'nav.recommendations')}</a
 					>
-					<a href="/contact" aria-current={path.startsWith('/contact') ? 'page' : undefined}
-						>Contact</a
+					<a href={contactHref} aria-current={isContact ? 'page' : undefined}
+						>{t(locale, 'nav.contact')}</a
 					>
+				</nav>
+				<nav class="lang-switch" aria-label={t(locale, 'nav.language')}>
+					{
+						LOCALES.map((loc) => {
+							const href =
+								(pathNoLocale === '/' ? localizedPath(loc, '/') : localizedPath(loc, pathNoLocale)) +
+								search;
+							return (
+								<a
+									href={href}
+									lang={loc}
+									hreflang={loc}
+									aria-current={loc === locale ? 'true' : undefined}
+									title={LOCALE_LABELS[loc]}
+								>
+									{loc.toUpperCase()}
+								</a>
+							);
+						})
+					}
 				</nav>
 			</div>
 		</header>
@@ -100,19 +177,21 @@ const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 		<footer class="site-footer">
 			<div class="site-footer__inner">
 				<p class="site-footer__copy">
-					© {year}. {siteName}. Out there, and elsewhere in stories
+					© {year}. {siteName}. {t(locale, 'footer.tagline')}
 				</p>
-				<nav class="site-footer__links" aria-label="Footer">
+				<nav class="site-footer__links" aria-label={t(locale, 'footer.nav')}>
 					<a href={linkedIn} rel="noopener noreferrer" target="_blank"
-						>Follow on LinkedIn<span class="sr-only"> (opens in a new tab)</span></a
+						>{t(locale, 'footer.linkedin')}<span class="sr-only">
+							{' '}
+							{t(locale, 'footer.newTab')}</span
+						></a
 					>
-					<a href="/contact">Get in touch</a>
-					<a href="/disclaimer">Disclaimer</a>
+					<a href={contactHref}>{t(locale, 'footer.contact')}</a>
+					<a href={disclaimerHref}>{t(locale, 'footer.disclaimer')}</a>
 				</nav>
 			</div>
 		</footer>
 		<script>
-			// Safari often won't move focus to #main via hash alone; make skip reliable.
 			document.querySelector('.skip-link')?.addEventListener('click', (event) => {
 				const main = document.getElementById('main');
 				if (!(main instanceof HTMLElement)) return;

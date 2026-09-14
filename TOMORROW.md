@@ -54,9 +54,9 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 - Multi-photo gallery per stop
 - Cloudflare Images transforms (resize/CDN) instead of browser-only resize
 - Auto-deploy from GitHub so merge to `main` ships without a local `npm run deploy`
-- [ ] **Multiple languages** — offer the site in different languages (i18n: UI copy, and decide how content in D1 is handled per locale)
+- [x] **Multiple languages** — EN/IT/ES/DE/FR UI + D1 content translations (admin tabs; English fallback)
 - [x] **SEO / Google** — technical bits shipped (canonical, OG, sitemap, JSON-LD); Search Console sitemap OK — wait for indexing
-- [ ] **Accessibility (vision-impaired)** — pass 1 in progress: skip link, focus styles, contrast, alts, reduced-motion, external-link announcements; more polish later (maps, admin)
+- [x] **Accessibility (vision-impaired)** — pass 1 + public/maps pass: skip link, focus, contrast, alts, reduced-motion, language switcher, TripMap route summary + itinerary focus, Planisphere legend keyboard
 
 ## Reminders
 

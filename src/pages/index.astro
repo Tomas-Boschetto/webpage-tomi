@@ -2,61 +2,67 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { env } from 'cloudflare:workers';
 import { getSiteUrl } from '../lib/site';
+import { DEFAULT_LOCALE, localizedPath, type Locale } from '../i18n/locales';
+import { t, type MessageKey } from '../i18n';
+
+interface Props {
+	locale?: Locale;
+}
 
 export const prerender = false;
 
+const locale: Locale = Astro.props.locale || (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
 const siteName = env.SITE_NAME || 'Tomas Boschetto';
 const linkedIn = env.LINKEDIN_URL || 'https://www.linkedin.com/in/tomasboschetto/';
 const siteUrl = getSiteUrl(env);
 
-const slides = [
-	{
-		id: 'ar',
-		src: '/images/hero-ar.jpg',
-		country: 'Argentina',
-		flag: '/images/flags/ar.png',
-		caption: 'Perito Moreno Glacier in Los Glaciares National Park, Patagonia',
-		photographer: 'Hans-Jürgen Weinhardt',
-		unsplash: 'https://unsplash.com/photos/5RFMPufTKPA',
-	},
-	{
-		id: 'pe',
-		src: '/images/hero-pe.jpg',
-		country: 'Peru',
-		flag: '/images/flags/pe.png',
-		caption: 'Machu Picchu stone ruins near Cusco',
-		photographer: 'Eddie Kiszka',
-		unsplash: 'https://unsplash.com/photos/rFESpq5MMTg',
-	},
-	{
-		id: 'ke',
-		src: '/images/hero-ke.jpg',
-		country: 'Kenya',
-		flag: '/images/flags/ke.png',
-		caption: 'Zebras and giraffes on the Amboseli plains with Mount Kilimanjaro beyond',
-		photographer: 'Stephan Bechert',
-		unsplash: 'https://unsplash.com/photos/xQWelDCacZE',
-	},
-	{
-		id: 'kh',
-		src: '/images/hero-kh.jpg',
-		country: 'Cambodia',
-		flag: '/images/flags/kh.png',
-		caption: 'Temple ruins at Angkor, near Siem Reap',
-		photographer: 'James Wheeler',
-		unsplash: 'https://unsplash.com/photos/9zXMb-E8pI0',
-	},
-	{
-		id: 'ch',
-		src: '/images/hero-ch.jpg',
-		country: 'Switzerland',
-		flag: '/images/flags/ch.png',
-		flagShape: 'square' as const,
-		caption: 'The Glacier Express crossing snowy fields in Goms, Valais',
-		photographer: 'Karin Hugentobler',
-		unsplash: 'https://unsplash.com/photos/tt3K-JvHrPY',
-	},
-];
+const slideIds = ['ar', 'pe', 'ke', 'kh', 'ch'] as const;
+const slides = slideIds.map((id) => {
+	const countryKey = `home.slide.${id}.country` as MessageKey;
+	const captionKey = `home.slide.${id}.caption` as MessageKey;
+	const meta: Record<
+		(typeof slideIds)[number],
+		{ src: string; flag: string; photographer: string; unsplash: string; flagShape?: 'square' }
+	> = {
+		ar: {
+			src: '/images/hero-ar.jpg',
+			flag: '/images/flags/ar.png',
+			photographer: 'Hans-Jürgen Weinhardt',
+			unsplash: 'https://unsplash.com/photos/5RFMPufTKPA',
+		},
+		pe: {
+			src: '/images/hero-pe.jpg',
+			flag: '/images/flags/pe.png',
+			photographer: 'Eddie Kiszka',
+			unsplash: 'https://unsplash.com/photos/rFESpq5MMTg',
+		},
+		ke: {
+			src: '/images/hero-ke.jpg',
+			flag: '/images/flags/ke.png',
+			photographer: 'Stephan Bechert',
+			unsplash: 'https://unsplash.com/photos/xQWelDCacZE',
+		},
+		kh: {
+			src: '/images/hero-kh.jpg',
+			flag: '/images/flags/kh.png',
+			photographer: 'James Wheeler',
+			unsplash: 'https://unsplash.com/photos/9zXMb-E8pI0',
+		},
+		ch: {
+			src: '/images/hero-ch.jpg',
+			flag: '/images/flags/ch.png',
+			flagShape: 'square',
+			photographer: 'Karin Hugentobler',
+			unsplash: 'https://unsplash.com/photos/tt3K-JvHrPY',
+		},
+	};
+	return {
+		id,
+		country: t(locale, countryKey),
+		caption: t(locale, captionKey),
+		...meta[id],
+	};
+});
 
 const jsonLd = [
 	{
@@ -64,7 +70,8 @@ const jsonLd = [
 		'@type': 'WebSite',
 		name: siteName,
 		url: siteUrl,
-		description: 'Movies, books, and places worth your time.',
+		description: t(locale, 'home.description'),
+		inLanguage: locale,
 	},
 	{
 		'@context': 'https://schema.org',
@@ -77,12 +84,13 @@ const jsonLd = [
 ---
 
 <BaseLayout
+	locale={locale}
 	title={siteName}
-	description="Movies, books, and places worth your time."
+	description={t(locale, 'home.description')}
 	image="/images/hero-ar.jpg"
 	jsonLd={jsonLd}
 >
-	<section class="hero" aria-label="Introduction">
+	<section class="hero" aria-label={t(locale, 'nav.home')}>
 		<div class="hero__media" aria-hidden="true">
 			{
 				slides.map((slide, i) => (
@@ -98,27 +106,24 @@ const jsonLd = [
 
 		<div class="hero__content">
 			<h1 class="hero__brand">{siteName}</h1>
-			<p class="hero__lead">
-				Here you can find my personal reviews of trips, books, and films. I hope you find them
-				useful — and please let me know if you have a recommendation!
-			</p>
-			<nav class="hero__paths" aria-label="Browse by topic">
-				<a class="hero__path" href="/recommendations?type=travel">
-					<span class="hero__path-label">Trips</span>
-					<span class="hero__path-hint">Travel itineraries</span>
+			<p class="hero__lead">{t(locale, 'home.lead')}</p>
+			<nav class="hero__paths" aria-label={t(locale, 'home.paths')}>
+				<a class="hero__path" href={localizedPath(locale, '/recommendations') + '?type=travel'}>
+					<span class="hero__path-label">{t(locale, 'home.cta.trips')}</span>
+					<span class="hero__path-hint">{t(locale, 'home.cta.tripsHint')}</span>
 				</a>
-				<a class="hero__path" href="/recommendations?type=book">
-					<span class="hero__path-label">Books</span>
-					<span class="hero__path-hint">Reading notes</span>
+				<a class="hero__path" href={localizedPath(locale, '/recommendations') + '?type=book'}>
+					<span class="hero__path-label">{t(locale, 'home.cta.books')}</span>
+					<span class="hero__path-hint">{t(locale, 'home.cta.booksHint')}</span>
 				</a>
-				<a class="hero__path" href="/recommendations?type=movie">
-					<span class="hero__path-label">Films</span>
-					<span class="hero__path-hint">Movie reviews</span>
+				<a class="hero__path" href={localizedPath(locale, '/recommendations') + '?type=movie'}>
+					<span class="hero__path-label">{t(locale, 'home.cta.films')}</span>
+					<span class="hero__path-hint">{t(locale, 'home.cta.filmsHint')}</span>
 				</a>
 			</nav>
 		</div>
 
-		<ul class="hero__credits" aria-label="Photo credits by country">
+		<ul class="hero__credits" aria-label={t(locale, 'home.credits')}>
 			{
 				slides.map((slide, i) => (
 					<li class:list={['hero__credit', i === 0 && 'is-active']} data-credit={slide.id}>
@@ -126,7 +131,7 @@ const jsonLd = [
 							type="button"
 							class:list={['hero__flag', slide.flagShape === 'square' && 'hero__flag--square']}
 							aria-describedby={`credit-${slide.id}`}
-							aria-label={`${slide.country} photo credit`}
+							aria-label={t(locale, 'home.photoCredit', { country: slide.country })}
 						>
 							<img
 								src={slide.flag}
@@ -138,9 +143,11 @@ const jsonLd = [
 						<div class="hero__tip" id={`credit-${slide.id}`} role="tooltip">
 							<p class="hero__tip-place">{slide.country}</p>
 							<p class="hero__tip-caption">{slide.caption}</p>
-							<p class="hero__tip-photo">Photo by {slide.photographer}</p>
+							<p class="hero__tip-photo">
+								{t(locale, 'home.photo.by')} {slide.photographer}
+							</p>
 							<p class="hero__tip-source">
-								Downloaded from{' '}
+								{t(locale, 'home.photo.downloaded')}{' '}
 								<a href={slide.unsplash} rel="noopener noreferrer" target="_blank">
 									Unsplash
 								</a>

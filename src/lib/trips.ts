@@ -436,12 +436,15 @@ function parseVisitedAt(value: unknown): { value: string } | { error: string } {
 	return { value: dateOnly };
 }
 
-export function formatVisitedAt(value: string | null | undefined): string {
+export function formatVisitedAt(
+	value: string | null | undefined,
+	locale?: string,
+): string {
 	if (!value) return '';
 	const dateOnly = value.slice(0, 10);
 	const date = new Date(`${dateOnly}T12:00:00`);
 	if (Number.isNaN(date.getTime())) return dateOnly || value;
-	return date.toLocaleDateString(undefined, {
+	return date.toLocaleDateString(locale || undefined, {
 		dateStyle: 'medium',
 	});
 }

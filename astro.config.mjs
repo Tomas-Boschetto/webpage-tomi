@@ -1,4 +1,3 @@
-// @ts-check
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 
@@ -10,5 +9,12 @@ export default defineConfig({
 			enabled: true,
 		},
 	}),
-	site: 'https://example.com',
+	site: 'https://tomasboschetto.com',
+	i18n: {
+		defaultLocale: 'en',
+		locales: ['en', 'it', 'es', 'de', 'fr'],
+		routing: {
+			prefixDefaultLocale: false,
+		},
+	},
 });

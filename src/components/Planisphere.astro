@@ -1,5 +1,7 @@
 ---
 import worldSvg from '../assets/maps/world.svg?raw';
+import { DEFAULT_LOCALE, type Locale } from '../i18n/locales';
+import { t } from '../i18n';
 
 interface Country {
 	country_code: string;
@@ -12,11 +14,13 @@ interface Props {
 	title?: string;
 	lead?: string;
 	id?: string;
+	locale?: Locale;
 }
 
+const locale: Locale = Astro.props.locale || DEFAULT_LOCALE;
 const {
 	countries,
-	title = "Where I've been",
+	title = t(locale, 'planisphere.title'),
 	lead,
 	id,
 } = Astro.props;
@@ -26,8 +30,13 @@ const nameByCode = new Map(countries.map((c) => [c.country_code.toUpperCase(), c
 const resolvedLead =
 	lead ??
 	(countries.length === 0
-		? 'Countries appear here from published trip stops.'
-		: `${countries.length} ${countries.length === 1 ? 'country' : 'countries'} from my itinerary stops.`);
+		? t(locale, 'planisphere.empty')
+		: countries.length === 1
+			? t(locale, 'planisphere.countOne')
+			: t(locale, 'planisphere.count', { n: countries.length }));
+
+const legendId = id ? `${id}-legend` : 'planisphere-legend';
+const visitedWord = t(locale, 'planisphere.visited');
 
 function escapeXml(value: string): string {
 	return value
@@ -49,7 +58,7 @@ function highlightWorld(svg: string, visited: Set<string>): string {
 			if (!visited.has(code)) return full;
 			const label = escapeXml(nameByCode.get(code) || code);
 			const attrs = rest.replace(/\sclass="[^"]*"/, '');
-			return `<path${idAttr} class="country is-visited"${attrs}><title>${label} (visited)</title></path>`;
+			return `<path${idAttr} class="country is-visited"${attrs}><title>${label} (${visitedWord})</title></path>`;
 		},
 	);
 }
@@ -57,7 +66,7 @@ function highlightWorld(svg: string, visited: Set<string>): string {
 const mapHtml = highlightWorld(worldSvg, codes);
 ---
 
-<section class="planisphere" aria-label="Countries visited" id={id}>
+<section class="planisphere" aria-label={t(locale, 'planisphere.aria')} id={id}>
 	<header class="planisphere__head">
 		<h2 class="planisphere__title">{title}</h2>
 		<p class="planisphere__lead" data-planisphere-lead>{resolvedLead}</p>
@@ -65,28 +74,47 @@ const mapHtml = highlightWorld(worldSvg, codes);
 	<div
 		class="planisphere__map"
 		role="img"
-		aria-label="World map of visited countries"
+		aria-label={t(locale, 'planisphere.mapAria')}
+		aria-describedby={legendId}
 		data-planisphere-map
 		set:html={mapHtml}
 	/>
-	<p class="planisphere__credit">Custom SVG planisphere · boundaries from Natural Earth</p>
-	<ul class="planisphere__legend" data-planisphere-legend>
+	<p class="planisphere__credit">{t(locale, 'planisphere.credit')}</p>
+	<ul
+		class="planisphere__legend"
+		id={legendId}
+		aria-label={t(locale, 'planisphere.legendAria')}
+		data-planisphere-legend
+	>
 		{
-			countries.map((c) => (
-				<li data-legend-code={c.country_code.toUpperCase()}>
-					<img
-						class="planisphere__flag"
-						src={flagUrl(c.country_code)}
-						alt=""
-						width="20"
-						height="15"
-						loading="lazy"
-						decoding="async"
-					/>
-					<strong>{c.name}</strong>
-					<span class="planisphere__note"> ({c.country_code})</span>
-				</li>
-			))
+			countries.map((c) => {
+				const code = c.country_code.toUpperCase();
+				return (
+					<li data-legend-code={code}>
+						<button
+							type="button"
+							class="planisphere__legend-btn"
+							data-legend-code={code}
+							aria-label={t(locale, 'planisphere.legendItem', {
+								country: c.name,
+								code,
+							})}
+						>
+							<img
+								class="planisphere__flag"
+								src={flagUrl(c.country_code)}
+								alt=""
+								width="20"
+								height="15"
+								loading="lazy"
+								decoding="async"
+							/>
+							<strong>{c.name}</strong>
+							<span class="planisphere__note"> ({code})</span>
+						</button>
+					</li>
+				);
+			})
 		}
 	</ul>
 </section>

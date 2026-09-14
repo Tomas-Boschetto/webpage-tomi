@@ -27,12 +27,23 @@ Open:
 - [http://localhost:4321/contact](http://localhost:4321/contact)
 - [http://localhost:4321/admin](http://localhost:4321/admin) — works locally with `ADMIN_DEV_BYPASS=true`
 
+## Languages
+
+Public site: **English** (default), **Italian**, **Spanish**, **German**, **French**.
+
+- URLs: `/about`, `/it/about`, `/es/about`, `/de/about`, `/fr/about`
+- UI chrome is translated via `src/i18n/messages/*`
+- Trip / stop / recommendation narrative fields live in D1 translation tables; English columns are the fallback
+- Edit translations in `/admin` (movies/books) or `/admin/trips` under **Translations** when editing an entry
+- Admin UI itself stays English
+
 ## Content workflow
 
 1. Open `/admin` for movies & books, or `/admin/trips` for travel (Cloudflare Access in production)
 2. For movies/books: start typing a title — matches appear live; pick one to autofill, then choose a cover/poster (set `TMDB_API_KEY` for movies; books use Open Library)
 3. For a trip: create it, optionally **Fetch photo (Unsplash)** for the list cover (`UNSPLASH_ACCESS_KEY`), then **Manage stops** — each stop needs a country (feeds the planisphere), visit date, optional map pin, and (after saving) an optional photo upload to R2
-4. Published items appear on `/recommendations` (and `/trips/[id]` with maps) immediately — no redeploy for content. Code changes still need `npm run deploy`
+4. After saving, use **Translations** tabs (IT/ES/DE/FR) to add localized title/summary/notes
+5. Published items appear on `/recommendations` (and `/trips/[id]` with maps) immediately — no redeploy for content. Code changes still need `npm run deploy`
 
 ## Deploy & Cloudflare dashboard
 

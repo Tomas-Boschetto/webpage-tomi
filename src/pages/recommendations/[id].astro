@@ -10,22 +10,44 @@ import {
 	parseExternalRatings,
 } from '../../lib/external-ratings';
 import { formatEditionPublished, formatExperiencedAt, formatGenreBrief, formatRating } from '../../lib/types';
+import { DEFAULT_LOCALE, localizedPath, type Locale } from '../../i18n/locales';
+import { t } from '../../i18n';
+import {
+	applyRecommendationTranslation,
+	getRecommendationTranslation,
+} from '../../lib/i18n-content';
+
+interface Props {
+	locale?: Locale;
+}
 
 export const prerender = false;
 
+const locale: Locale = Astro.props.locale || (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
+
 const id = Astro.params.id!;
-const item = await getById(env.DB, id);
-const published = item && item.published === 1 && (item.type === 'movie' || item.type === 'book');
+const rawItem = await getById(env.DB, id);
+const published =
+	rawItem && rawItem.published === 1 && (rawItem.type === 'movie' || rawItem.type === 'book');
+
+const item = published && rawItem
+	? applyRecommendationTranslation(
+			rawItem,
+			await getRecommendationTranslation(env.DB, rawItem.id, locale),
+		)
+	: rawItem;
 
 if (!published) {
 	Astro.response.status = 404;
 }
 
-const creatorLabel = item?.type === 'book' ? 'Author' : 'Director';
-const whenLabel = item?.type === 'book' ? 'Read' : 'Watched';
-const releaseLabel = item?.type === 'book' ? 'Edition published' : 'Released';
-const originalLabel = item?.type === 'book' ? 'First published' : 'Released';
-const coverKind = item?.type === 'book' ? 'Cover' : 'Poster';
+const creatorLabel = item?.type === 'book' ? t(locale, 'recs.author') : t(locale, 'recs.director');
+const whenLabel = item?.type === 'book' ? t(locale, 'recs.read') : t(locale, 'recs.watched');
+const releaseLabel =
+	item?.type === 'book' ? t(locale, 'recs.editionPublished') : t(locale, 'recs.released');
+const originalLabel =
+	item?.type === 'book' ? t(locale, 'recs.firstPublished') : t(locale, 'recs.released');
+const coverKindKey = item?.type === 'book' ? 'recs.coverOf' : 'recs.posterOf';
 const ratingText = item ? formatRating(item.rating) : null;
 const whenText = item
 	? formatExperiencedAt(item.experienced_at, { monthOnly: item.type === 'book' })
@@ -39,8 +61,12 @@ const extraGroups = accoladeGroups.slice(2);
 const marketplaceRatings = parseExternalRatings(item?.external_ratings);
 const synopsisSource = item?.type === 'movie' ? 'TMDB' : 'Open Library';
 const moreInfoIsWikipedia = Boolean(item?.url && /wikipedia\.org/i.test(item.url));
-const moreInfoLabel = moreInfoIsWikipedia ? 'Wikipedia' : 'More info';
+const moreInfoLabel = moreInfoIsWikipedia ? t(locale, 'recs.wikipedia') : t(locale, 'recs.moreInfo');
 const backType = item?.type === 'book' ? 'book' : 'movie';
+const recsBase = localizedPath(locale, '/recommendations');
+const backHref = `${recsBase}?type=${backType}`;
+const moviesBack = `${recsBase}?type=movie`;
+const disclaimerHref = localizedPath(locale, '/disclaimer');
 
 function prizeRows(groups: typeof accoladeGroups) {
 	return groups.flatMap((group) =>
@@ -58,22 +84,25 @@ const extraPrizes = prizeRows(extraGroups);
 
 {
 	!published || !item ? (
-		<BaseLayout title="Not found" robots="noindex, follow">
+		<BaseLayout locale={locale} title={t(locale, 'recs.notFound')} robots="noindex, follow">
 			<header class="section-head">
-				<h1>Not found</h1>
+				<h1>{t(locale, 'recs.notFound')}</h1>
 				<p>
-					<a href="/recommendations?type=movie">Back to recommendations</a>
+					<a href={moviesBack}>{t(locale, 'recs.back')}</a>
 				</p>
 			</header>
 		</BaseLayout>
 	) : (
 		<BaseLayout
+			locale={locale}
 			title={item.title}
 			description={item.commentary?.trim() || item.summary}
 			image={item.image_url || '/images/hero-ar.jpg'}
 		>
 			<p class="rec-detail__back">
-				<a href={`/recommendations?type=${backType}`}>← All {backType === 'book' ? 'books' : 'movies'}</a>
+				<a href={backHref}>
+					{backType === 'book' ? t(locale, 'recs.allBooks') : t(locale, 'recs.allMovies')}
+				</a>
 			</p>
 
 			<article class:list={['rec-detail', item.image_url && 'rec-detail--with-cover']}>
@@ -82,7 +111,7 @@ const extraPrizes = prizeRows(extraGroups);
 						<div class="rec-detail__media">
 							<img
 								src={item.image_url}
-								alt={`${coverKind} of ${item.title}`}
+								alt={t(locale, coverKindKey, { title: item.title })}
 								width="280"
 								height="420"
 								decoding="async"
@@ -97,14 +126,17 @@ const extraPrizes = prizeRows(extraGroups);
 
 					{
 						ratingText && (
-							<p class="rec-item__rating" aria-label={`My rating ${ratingText}`}>
+							<p
+								class="rec-item__rating"
+								aria-label={t(locale, 'recs.myRatingAria', { rating: ratingText })}
+							>
 								<span class="stars" aria-hidden="true">
 									{'★'.repeat(Math.round(item.rating ?? 0))}
 									{'☆'.repeat(Math.max(0, 5 - Math.round(item.rating ?? 0)))}
 								</span>
 								<span class="rec-item__rating-text">
 									{ratingText}
-									<span class="rec-item__rating-mine"> · mine</span>
+									<span class="rec-item__rating-mine"> · {t(locale, 'recs.mine')}</span>
 								</span>
 							</p>
 						)
@@ -113,7 +145,7 @@ const extraPrizes = prizeRows(extraGroups);
 					{
 						marketplaceRatings.length > 0 && (
 							<div class="rec-marketplace">
-								<p class="rec-marketplace__label">Elsewhere</p>
+								<p class="rec-marketplace__label">{t(locale, 'recs.elsewhere')}</p>
 								<ul class="rec-marketplace__list">
 									{marketplaceRatings.map((entry) => {
 										const meta = externalRatingMeta(entry.source);
@@ -124,14 +156,16 @@ const extraPrizes = prizeRows(extraGroups);
 												<a href={href} rel="noopener noreferrer" target="_blank">
 													{entry.label}
 													<span class="sr-only">
-														{' '}
-														rating for {item.title} (opens in a new tab)
+														{t(locale, 'recs.srRatingFor', { title: item.title })}
+														{t(locale, 'recs.srNewTab')}
 													</span>
 												</a>
 												<span class="rec-marketplace__score">{score}</span>
 												{entry.count != null && entry.count > 0 && (
 													<span class="rec-marketplace__count">
-														({entry.count.toLocaleString('en-US')} votes)
+														{t(locale, 'recs.votes', {
+															count: entry.count.toLocaleString(locale),
+														})}
 													</span>
 												)}
 											</li>
@@ -139,8 +173,8 @@ const extraPrizes = prizeRows(extraGroups);
 									})}
 								</ul>
 								<p class="rec-marketplace__credit">
-									Third-party community scores — not affiliated with those sites. See{' '}
-									<a href="/disclaimer">disclaimer</a>.
+									{t(locale, 'recs.marketplaceCreditPre')}{' '}
+									<a href={disclaimerHref}>{t(locale, 'recs.marketplaceCreditLink')}</a>.
 								</p>
 							</div>
 						)
@@ -159,7 +193,7 @@ const extraPrizes = prizeRows(extraGroups);
 						)}
 						{item.type === 'movie' && item.cast_members && (
 							<li>
-								<strong>Cast:</strong> {item.cast_members}
+								<strong>{t(locale, 'recs.cast')}:</strong> {item.cast_members}
 							</li>
 						)}
 						{originalText && (
@@ -180,19 +214,21 @@ const extraPrizes = prizeRows(extraGroups);
 					</ul>
 
 					<section class="rec-prose-block">
-						<h2 class="rec-prose-block__label">Synopsis</h2>
+						<h2 class="rec-prose-block__label">{t(locale, 'recs.synopsis')}</h2>
 						<p class="rec-prose-block__text">{item.summary}</p>
-						<p class="rec-prose-block__source">Source: {synopsisSource} (edited as needed)</p>
+						<p class="rec-prose-block__source">
+							{t(locale, 'recs.synopsisSource', { source: synopsisSource })}
+						</p>
 					</section>
 
 					<section class="rec-prose-block rec-prose-block--personal">
-						<h2 class="rec-prose-block__label">My commentary</h2>
+						<h2 class="rec-prose-block__label">{t(locale, 'recs.commentary')}</h2>
 						{
 							item.commentary?.trim() ? (
 								<p class="rec-prose-block__text">{item.commentary}</p>
 							) : (
 								<p class="rec-prose-block__text rec-prose-block__text--empty">
-									No personal commentary yet.
+									{t(locale, 'recs.noCommentary')}
 								</p>
 							)
 						}
@@ -201,7 +237,7 @@ const extraPrizes = prizeRows(extraGroups);
 					{
 						visiblePrizes.length > 0 && (
 							<section class="rec-prizes">
-								<h2 class="rec-prizes__heading">Awards</h2>
+								<h2 class="rec-prizes__heading">{t(locale, 'recs.awards')}</h2>
 								<ul class="rec-prizes__list">
 									{visiblePrizes.map((prize) => (
 										<AccoladePrize award={prize.award} org={prize.org} mark={prize.mark} />
@@ -210,8 +246,9 @@ const extraPrizes = prizeRows(extraGroups);
 								{extraPrizes.length > 0 && (
 									<details class="rec-prizes__more">
 										<summary>
-											Show {extraGroups.length} more{' '}
-											{extraGroups.length === 1 ? 'institution' : 'institutions'}
+											{extraGroups.length === 1
+												? t(locale, 'recs.moreInstitution', { n: extraGroups.length })
+												: t(locale, 'recs.moreInstitutions', { n: extraGroups.length })}
 										</summary>
 										<ul class="rec-prizes__list">
 											{extraPrizes.map((prize) => (
@@ -236,7 +273,11 @@ const extraPrizes = prizeRows(extraGroups);
 								rel="noopener noreferrer"
 								target="_blank"
 							>
-								IMDb<span class="sr-only"> for {item.title} (opens in a new tab)</span>
+								IMDb
+								<span class="sr-only">
+									{t(locale, 'recs.srForTitle', { title: item.title })}{' '}
+									{t(locale, 'recs.srNewTab')}
+								</span>
 							</a>
 						)}
 						{item.type === 'book' && item.goodreads_url && (
@@ -246,7 +287,11 @@ const extraPrizes = prizeRows(extraGroups);
 								rel="noopener noreferrer"
 								target="_blank"
 							>
-								Goodreads<span class="sr-only"> for {item.title} (opens in a new tab)</span>
+								Goodreads
+								<span class="sr-only">
+									{t(locale, 'recs.srForTitle', { title: item.title })}{' '}
+									{t(locale, 'recs.srNewTab')}
+								</span>
 							</a>
 						)}
 						{item.url && (
@@ -257,7 +302,10 @@ const extraPrizes = prizeRows(extraGroups);
 								target="_blank"
 							>
 								{moreInfoLabel}
-								<span class="sr-only"> for {item.title} (opens in a new tab)</span>
+								<span class="sr-only">
+									{t(locale, 'recs.srForTitle', { title: item.title })}{' '}
+									{t(locale, 'recs.srNewTab')}
+								</span>
 							</a>
 						)}
 					</div>

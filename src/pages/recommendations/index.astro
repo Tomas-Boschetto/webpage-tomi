@@ -21,8 +21,17 @@ import { coverSourceFromUrl } from '../../lib/covers';
 import { accoladesSource, extractAccoladeInstitutions } from '../../lib/accolades';
 import { listItineraryForTrip, listPublishedTrips } from '../../lib/trips';
 import { isRecommendationType, type RecommendationType } from '../../lib/types';
+import { DEFAULT_LOCALE, localizedPath, type Locale } from '../../i18n/locales';
+import { t } from '../../i18n';
+import { localizeRecommendations, localizeTrips } from '../../lib/i18n-content';
+
+interface Props {
+	locale?: Locale;
+}
 
 export const prerender = false;
+
+const locale: Locale = Astro.props.locale || (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
 
 const typeParam = Astro.url.searchParams.get('type');
 const showTravel = typeParam === 'travel';
@@ -48,7 +57,8 @@ const minRating = parseMinRating(Astro.url.searchParams.get('min_rating'));
 const recSort = parseRecSort(sortParam);
 const tripSort = parseTripSort(sortParam);
 
-const allMedia = showTravel ? [] : await listPublished(env.DB, activeType);
+const allMediaRaw = showTravel ? [] : await listPublished(env.DB, activeType);
+const allMedia = await localizeRecommendations(env.DB, allMediaRaw, locale);
 const genres = extractGenres(allMedia);
 const awardInstitutions = extractAccoladeInstitutions(allMedia);
 const authors = activeType === 'book' ? extractAuthors(allMedia) : [];
@@ -64,7 +74,8 @@ const mediaItems = filterAndSortRecommendations(allMedia, {
 	sort: recSort,
 });
 
-const allTrips = showTravel ? await listPublishedTrips(env.DB) : [];
+const allTripsRaw = showTravel ? await listPublishedTrips(env.DB) : [];
+const allTrips = showTravel ? await localizeTrips(env.DB, allTripsRaw, locale) : [];
 
 const countries = showTravel ? await listCountriesFromPublishedStops(env.DB) : [];
 const countryFilterValid =
@@ -96,14 +107,15 @@ const tripCards = await Promise.all(
 	}),
 );
 
+const recsBase = localizedPath(locale, '/recommendations');
 function hrefForType(type: 'movie' | 'book' | 'travel') {
-	return `/recommendations?type=${type}`;
+	return `${recsBase}?type=${type}`;
 }
 
 const tabs = [
-	{ label: 'Movies', href: hrefForType('movie'), current: activeType === 'movie' },
-	{ label: 'Books', href: hrefForType('book'), current: activeType === 'book' },
-	{ label: 'Travel', href: hrefForType('travel'), current: showTravel },
+	{ label: t(locale, 'recs.movies'), href: hrefForType('movie'), current: activeType === 'movie' },
+	{ label: t(locale, 'recs.books'), href: hrefForType('book'), current: activeType === 'book' },
+	{ label: t(locale, 'recs.travel'), href: hrefForType('travel'), current: showTravel },
 ];
 
 const empty = showTravel ? tripCards.length === 0 : mediaItems.length === 0;
@@ -125,22 +137,28 @@ const showWikidataCredit = mediaItems.some(
 );
 
 const sectionBlurb = showTravel
-	? 'Trips and places I’ve been.'
+	? t(locale, 'recs.blurb.travel')
 	: activeType === 'book'
-		? 'Books I’ve read and recommend.'
-		: 'Films I’ve watched and recommend.';
+		? t(locale, 'recs.blurb.books')
+		: t(locale, 'recs.blurb.movies');
 
 const PAGE_SIZE = 10;
 const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
+const msgShowingMore = t(locale, 'recs.showingMore', { shown: '{shown}', total: '{total}' });
+const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 ---
 
-<BaseLayout title="Recommendations" description="Movie, book, and travel recommendations.">
+<BaseLayout
+	locale={locale}
+	title={t(locale, 'recs.title')}
+	description={t(locale, 'recs.description')}
+>
 	<header class="section-head">
-		<h1>Recommendations</h1>
+		<h1>{t(locale, 'recs.title')}</h1>
 		<p>{sectionBlurb}</p>
 	</header>
 
-	<nav class="tabs" aria-label="Recommendation types">
+	<nav class="tabs" aria-label={t(locale, 'recs.tabs')}>
 		{
 			tabs.map((tab) => (
 				<a href={tab.href} aria-current={tab.current ? 'page' : undefined}>
@@ -155,9 +173,9 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 			<form class="rec-toolbar" method="get" id="rec-toolbar">
 				{activeType && <input type="hidden" name="type" value={activeType} />}
 				<label class="rec-toolbar__field">
-					<span>Genre</span>
+					<span>{t(locale, 'recs.genre')}</span>
 					<select name="genre">
-						<option value="">All genres</option>
+						<option value="">{t(locale, 'recs.allGenres')}</option>
 						{genres.map((genre) => (
 							<option value={genre} selected={genreParam === genre}>
 								{genre}
@@ -168,9 +186,9 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 				{
 					activeType === 'book' && authors.length > 0 && (
 						<label class="rec-toolbar__field">
-							<span>Author</span>
+							<span>{t(locale, 'recs.author')}</span>
 							<select name="author">
-								<option value="">All authors</option>
+								<option value="">{t(locale, 'recs.allAuthors')}</option>
 								{authors.map((author) => (
 									<option value={author} selected={authorParam === author}>
 										{author}
@@ -183,9 +201,9 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 				{
 					activeType === 'movie' && directors.length > 0 && (
 						<label class="rec-toolbar__field">
-							<span>Director</span>
+							<span>{t(locale, 'recs.director')}</span>
 							<select name="director">
-								<option value="">All directors</option>
+								<option value="">{t(locale, 'recs.allDirectors')}</option>
 								{directors.map((director) => (
 									<option value={director} selected={directorParam === director}>
 										{director}
@@ -198,9 +216,9 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 				{
 					activeType === 'movie' && actors.length > 0 && (
 						<label class="rec-toolbar__field">
-							<span>Actor</span>
+							<span>{t(locale, 'recs.actor')}</span>
 							<select name="actor">
-								<option value="">All actors</option>
+								<option value="">{t(locale, 'recs.allActors')}</option>
 								{actors.map((actor) => (
 									<option value={actor} selected={actorParam === actor}>
 										{actor}
@@ -213,9 +231,9 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 				{
 					awardInstitutions.length > 0 && (
 						<label class="rec-toolbar__field">
-							<span>Award</span>
+							<span>{t(locale, 'recs.award')}</span>
 							<select name="award">
-								<option value="">All awards</option>
+								<option value="">{t(locale, 'recs.allAwards')}</option>
 								{awardInstitutions.map((institution) => (
 									<option value={institution} selected={awardParam === institution}>
 										{institution}
@@ -226,10 +244,10 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 					)
 				}
 				<label class="rec-toolbar__field">
-					<span>Min rating</span>
+					<span>{t(locale, 'recs.minRating')}</span>
 					<select name="min_rating">
 						<option value="" selected={minRating == null}>
-							Any
+							{t(locale, 'recs.any')}
 						</option>
 						{[3, 3.5, 4, 4.5, 5].map((value) => (
 							<option value={String(value)} selected={minRating === value}>
@@ -239,25 +257,25 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 					</select>
 				</label>
 				<label class="rec-toolbar__field">
-					<span>Sort</span>
+					<span>{t(locale, 'recs.sort')}</span>
 					<select name="sort">
 						<option value="newest" selected={recSort === 'newest'}>
-							Newest first
+							{t(locale, 'recs.sortNewest')}
 						</option>
 						<option value="oldest" selected={recSort === 'oldest'}>
-							Oldest first
+							{t(locale, 'recs.sortOldest')}
 						</option>
 						<option value="rating-desc" selected={recSort === 'rating-desc'}>
-							Highest rated
+							{t(locale, 'recs.sortRatingDesc')}
 						</option>
 						<option value="rating-asc" selected={recSort === 'rating-asc'}>
-							Lowest rated
+							{t(locale, 'recs.sortRatingAsc')}
 						</option>
 						<option value="title-asc" selected={recSort === 'title-asc'}>
-							Title A–Z
+							{t(locale, 'recs.sortTitleAsc')}
 						</option>
 						<option value="title-desc" selected={recSort === 'title-desc'}>
-							Title Z–A
+							{t(locale, 'recs.sortTitleDesc')}
 						</option>
 					</select>
 				</label>
@@ -270,9 +288,9 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 			<form class="rec-toolbar" method="get" id="rec-toolbar">
 				<input type="hidden" name="type" value="travel" />
 				<label class="rec-toolbar__field">
-					<span>Country</span>
+					<span>{t(locale, 'recs.country')}</span>
 					<select name="country">
-						<option value="">All countries</option>
+						<option value="">{t(locale, 'recs.allCountries')}</option>
 						{countries.map((country) => (
 							<option
 								value={country.country_code}
@@ -284,19 +302,19 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 					</select>
 				</label>
 				<label class="rec-toolbar__field">
-					<span>Sort</span>
+					<span>{t(locale, 'recs.sort')}</span>
 					<select name="sort">
 						<option value="newest" selected={tripSort === 'newest'}>
-							Newest first
+							{t(locale, 'recs.sortNewest')}
 						</option>
 						<option value="oldest" selected={tripSort === 'oldest'}>
-							Oldest first
+							{t(locale, 'recs.sortOldest')}
 						</option>
 						<option value="title-asc" selected={tripSort === 'title-asc'}>
-							Title A–Z
+							{t(locale, 'recs.sortTitleAsc')}
 						</option>
 						<option value="title-desc" selected={tripSort === 'title-desc'}>
-							Title Z–A
+							{t(locale, 'recs.sortTitleDesc')}
 						</option>
 					</select>
 				</label>
@@ -306,28 +324,39 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 
 	{
 		empty ? (
-			<p class="empty">Nothing published here yet. Check back soon.</p>
+			<p class="empty">{t(locale, 'recs.empty')}</p>
 		) : showTravel ? (
 			<section class="travel-split" data-travel-split>
 				<div class="travel-split__list" data-travel-list>
 					<div class="rec-list travel-split__cards">
 						{tripCards.map(({ trip, stopCount, countryCodes }) => (
-							<TripCard trip={trip} stopCount={stopCount} countryCodes={countryCodes} />
+							<TripCard
+								trip={trip}
+								stopCount={stopCount}
+								countryCodes={countryCodes}
+								locale={locale}
+							/>
 						))}
 					</div>
 					<p class="travel-split__empty empty" data-travel-empty hidden>
-						No trips for that country.
+						{t(locale, 'recs.emptyCountry')}
 					</p>
 				</div>
 				<div class="travel-split__map">
-					<Planisphere countries={countries} id="travel-planisphere" />
+					<Planisphere countries={countries} id="travel-planisphere" locale={locale} />
 				</div>
 			</section>
 		) : (
 			<>
-				<div class="rec-list" data-rec-infinite data-page-size={PAGE_SIZE}>
+				<div
+					class="rec-list"
+					data-rec-infinite
+					data-page-size={PAGE_SIZE}
+					data-msg-more={msgShowingMore}
+					data-msg-all={msgShowingAll}
+				>
 					{mediaItems.map((item, index) => (
-						<RecCard item={item} deferred={index >= PAGE_SIZE} />
+						<RecCard item={item} deferred={index >= PAGE_SIZE} locale={locale} />
 					))}
 					{hasMoreMedia && (
 						<div class="rec-infinite-sentinel" data-rec-sentinel aria-hidden="true"></div>
@@ -338,19 +367,21 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 					<p class="rec-attribution">
 						{showTmdbCredit && (
 							<>
-								Movie posters courtesy of{' '}
+								{t(locale, 'recs.attr.tmdbPre')}{' '}
 								<a href="https://www.themoviedb.org/" rel="noopener noreferrer" target="_blank">
 									TMDB
+									<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
 								</a>
-								. This product uses the TMDB API but is not endorsed or certified by TMDB.
+								{t(locale, 'recs.attr.tmdbPost')}
 								{showOpenLibraryCredit || showUnsplashCredit || showWikidataCredit ? ' ' : ''}
 							</>
 						)}
 						{showOpenLibraryCredit && (
 							<>
-								Book covers from{' '}
+								{t(locale, 'recs.attr.openLibraryPre')}{' '}
 								<a href="https://openlibrary.org/" rel="noopener noreferrer" target="_blank">
 									Open Library
+									<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
 								</a>
 								.
 								{showUnsplashCredit || showWikidataCredit ? ' ' : ''}
@@ -358,9 +389,10 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 						)}
 						{showUnsplashCredit && (
 							<>
-								Trip photos from{' '}
+								{t(locale, 'recs.attr.unsplashPre')}{' '}
 								<a href="https://unsplash.com/" rel="noopener noreferrer" target="_blank">
 									Unsplash
+									<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
 								</a>
 								.
 								{showWikidataCredit ? ' ' : ''}
@@ -368,11 +400,12 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 						)}
 						{showWikidataCredit && (
 							<>
-								Award data from{' '}
+								{t(locale, 'recs.attr.wikidataPre')}{' '}
 								<a href="https://www.wikidata.org/" rel="noopener noreferrer" target="_blank">
 									Wikidata
+									<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
 								</a>{' '}
-								(CC0).
+								{t(locale, 'recs.attr.wikidataPost')}
 							</>
 						)}
 					</p>
@@ -384,9 +417,10 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 	{
 		showTravel && showUnsplashCredit && (
 			<p class="rec-attribution">
-				Trip photos from{' '}
+				{t(locale, 'recs.attr.unsplashPre')}{' '}
 				<a href="https://unsplash.com/" rel="noopener noreferrer" target="_blank">
 					Unsplash
+					<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
 				</a>
 				.
 			</p>
@@ -405,10 +439,18 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 	const infiniteList = document.querySelector('[data-rec-infinite]');
 	if (infiniteList instanceof HTMLElement) {
 		const pageSize = Math.max(1, Number(infiniteList.dataset.pageSize) || 10);
+		const msgMoreTpl = infiniteList.dataset.msgMore || 'Showing {shown} of {total}. Scroll for more.';
+		const msgAllTpl = infiniteList.dataset.msgAll || 'Showing all {total}.';
 		const items = Array.from(infiniteList.querySelectorAll(':scope > .rec-item'));
 		const sentinel = infiniteList.querySelector('[data-rec-sentinel]');
 		const statusEl = document.querySelector('[data-rec-status]');
 		let shown = items.filter((el) => !el.hasAttribute('hidden')).length;
+
+		function formatStatus(tpl, vars) {
+			return String(tpl)
+				.replaceAll('{shown}', String(vars.shown))
+				.replaceAll('{total}', String(vars.total));
+		}
 
 		function setStatus(message) {
 			if (statusEl instanceof HTMLElement) statusEl.textContent = message;
@@ -422,8 +464,8 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 			const remaining = items.length - shown;
 			setStatus(
 				remaining > 0
-					? `Showing ${shown} of ${items.length}. Scroll for more.`
-					: `Showing all ${items.length}.`,
+					? formatStatus(msgMoreTpl, { shown, total: items.length })
+					: formatStatus(msgAllTpl, { total: items.length }),
 			);
 			if (remaining <= 0) {
 				observer.disconnect();
@@ -440,7 +482,7 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 
 		if (sentinel && shown < items.length) {
 			observer.observe(sentinel);
-			setStatus(`Showing ${shown} of ${items.length}. Scroll for more.`);
+			setStatus(formatStatus(msgMoreTpl, { shown, total: items.length }));
 		}
 	}
 
@@ -511,6 +553,10 @@ const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 				applyCountryFilter(row.getAttribute('data-legend-code')),
 			);
 			row.addEventListener('mouseleave', clearHoverFilter);
+			row.addEventListener('focus', () =>
+				applyCountryFilter(row.getAttribute('data-legend-code')),
+			);
+			row.addEventListener('blur', clearHoverFilter);
 		});
 	}
 </script>

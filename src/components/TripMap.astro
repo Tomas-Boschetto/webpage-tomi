@@ -1,17 +1,16 @@
 ---
 import type { ItineraryItem, TransportMode } from '../lib/types';
-import {
-	PLACE_TYPE_LABELS,
-	TRANSPORT_MODE_LABELS,
-	TRANSPORT_MODE_MAP_STYLE,
-	isTransportMode,
-} from '../lib/types';
+import { TRANSPORT_MODE_MAP_STYLE, isTransportMode } from '../lib/types';
+import { DEFAULT_LOCALE, type Locale } from '../i18n/locales';
+import { t, placeTypeLabel, transportModeLabel } from '../i18n';
 
 interface Props {
 	items: ItineraryItem[];
 	tripTitle: string;
+	locale?: Locale;
 }
 
+const locale: Locale = Astro.props.locale || DEFAULT_LOCALE;
 const { items, tripTitle } = Astro.props;
 const mappable = items.filter((i) => i.lat != null && i.lng != null);
 const payload = mappable.map((i) => {
@@ -19,9 +18,9 @@ const payload = mappable.map((i) => {
 	return {
 		id: i.id,
 		name: i.place_name,
-		type: PLACE_TYPE_LABELS[i.place_type],
+		type: placeTypeLabel(locale, i.place_type),
 		mode,
-		modeLabel: TRANSPORT_MODE_LABELS[mode],
+		modeLabel: transportModeLabel(locale, mode),
 		lat: i.lat as number,
 		lng: i.lng as number,
 	};
@@ -35,7 +34,7 @@ const modesUsed = [
 
 const legend = modesUsed.map((mode) => ({
 	mode,
-	label: TRANSPORT_MODE_LABELS[mode],
+	label: transportModeLabel(locale, mode),
 	...TRANSPORT_MODE_MAP_STYLE[mode],
 }));
 
@@ -49,17 +48,18 @@ const googleMapsDirUrl =
 				.map((i) => `${i.lat},${i.lng}`)
 				.join('/')}`
 		: '';
+
+const routeSummary = mappable.map((i) => i.place_name).join(' → ');
+const routeSummaryId = 'trip-route-summary';
 ---
 
 {
 	mappable.length > 0 && (
-		<section class="trip-map-wrap" aria-label="Trip map">
+		<section class="trip-map-wrap" aria-label={t(locale, 'trip.map.aria')}>
 			<div class="trip-map__header">
 				<div>
-					<h2 class="trip-map__title">Map</h2>
-					<p class="trip-map__lead">
-						Lines show how I moved between stops. Click a pin to jump to that stop.
-					</p>
+					<h2 class="trip-map__title">{t(locale, 'trip.map')}</h2>
+					<p class="trip-map__lead">{t(locale, 'trip.map.lead')}</p>
 				</div>
 				<div class="trip-export">
 					{googleMapsDirUrl && (
@@ -69,24 +69,32 @@ const googleMapsDirUrl =
 							rel="noopener noreferrer"
 							target="_blank"
 						>
-							Open in Google Maps
+							{t(locale, 'trip.openMaps')}
+							<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
 						</a>
 					)}
 					<button class="btn btn--ghost trip-export__btn" type="button" data-gpx-download>
-						Download GPX
+						{t(locale, 'trip.downloadGpx')}
 					</button>
 				</div>
 			</div>
+			<p class="sr-only" id={routeSummaryId}>
+				{t(locale, 'trip.route.summary')}: {routeSummary}
+			</p>
 			<div
 				class="trip-map"
 				id="trip-map"
+				aria-label={t(locale, 'trip.map.canvas')}
+				aria-describedby={routeSummaryId}
 				data-stops={JSON.stringify(payload)}
 				data-styles={JSON.stringify(styleByMode)}
 				data-trip-title={tripTitle}
+				data-arrived-by={t(locale, 'trip.arrivedBy', { mode: '{mode}' })}
+				data-view-itinerary={t(locale, 'trip.viewInItinerary')}
 			/>
 			{
 				legend.length > 0 && (
-					<ul class="trip-map__legend" aria-label="Transport modes on this map">
+					<ul class="trip-map__legend" aria-label={t(locale, 'trip.legend')}>
 						{legend.map((entry) => (
 							<li>
 								<span
@@ -120,9 +128,12 @@ const googleMapsDirUrl =
 					var stops = JSON.parse(root.getAttribute('data-stops') || '[]');
 					var styles = JSON.parse(root.getAttribute('data-styles') || '{}');
 					var tripTitle = root.getAttribute('data-trip-title') || 'Trip';
+					var arrivedByTpl = root.getAttribute('data-arrived-by') || 'Arrived by: {mode}';
+					var viewItinerary = root.getAttribute('data-view-itinerary') || 'View in itinerary';
 					if (!stops.length) return;
 
 					var map = window.L.map(root, { scrollWheelZoom: false });
+					root.removeAttribute('role');
 					window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 						attribution:
 							'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -135,15 +146,21 @@ const googleMapsDirUrl =
 						var marker = window.L.marker([stop.lat, stop.lng], {
 							title: stop.name,
 						}).addTo(map);
+						var arrivedLine =
+							index > 0
+								? '<br/>' + arrivedByTpl.replace('{mode}', stop.modeLabel)
+								: '';
 						marker.bindPopup(
 							'<strong>' +
 								stop.name +
 								'</strong><br/>' +
 								stop.type +
-								(index > 0 ? '<br/>Arrived by: ' + stop.modeLabel : '') +
+								arrivedLine +
 								'<br/><a href="#stop-' +
 								stop.id +
-								'">View in itinerary</a>',
+								'">' +
+								viewItinerary +
+								'</a>',
 						);
 						marker.on('click', function () {
 							var el = document.getElementById('stop-' + stop.id);
@@ -152,7 +169,9 @@ const googleMapsDirUrl =
 								node.classList.remove('itinerary__item--active');
 							});
 							el.classList.add('itinerary__item--active');
+							if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
 							el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+							el.focus({ preventScroll: true });
 						});
 						markers[stop.id] = marker;
 						bounds.push([stop.lat, stop.lng]);
@@ -186,10 +205,11 @@ const googleMapsDirUrl =
 							var id = el.getAttribute('data-stop-id');
 							var marker = markers[id];
 							if (!marker) return;
+							var item = document.getElementById('stop-' + id);
 							document.querySelectorAll('.itinerary__item--active').forEach(function (node) {
 								node.classList.remove('itinerary__item--active');
 							});
-							el.classList.add('itinerary__item--active');
+							if (item) item.classList.add('itinerary__item--active');
 							map.panTo(marker.getLatLng());
 							marker.openPopup();
 						});

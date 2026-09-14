@@ -1,16 +1,27 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { DEFAULT_LOCALE, localizedPath, type Locale } from '../i18n/locales';
+import { t } from '../i18n';
+
+interface Props {
+	locale?: Locale;
+}
 
 export const prerender = false;
+
+const locale: Locale = Astro.props.locale || (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
+const contactHref = localizedPath(locale, '/contact');
+const newTab = t(locale, 'footer.newTab');
 ---
 
 <BaseLayout
-	title="Disclaimer"
-	description="Non-commercial use statement and disclosures for APIs and data sources used on this site."
+	locale={locale}
+	title={t(locale, 'disclaimer.title')}
+	description={t(locale, 'disclaimer.description')}
 >
 	<header class="section-head">
-		<h1>Disclaimer</h1>
-		<p>Non-commercial use and third-party data disclosures.</p>
+		<h1>{t(locale, 'disclaimer.title')}</h1>
+		<p>{t(locale, 'disclaimer.lead')}</p>
 	</header>
 
 	<article class="about-prose disclaimer-prose">
@@ -45,7 +56,7 @@ export const prerender = false;
 			<p>
 				Movie metadata and posters may come from
 				<a href="https://www.themoviedb.org/" rel="noopener noreferrer" target="_blank"
-					>TMDB<span class="sr-only"> (opens in a new tab)</span></a
+					>TMDB<span class="sr-only"> {newTab}</span></a
 				>. This product uses the TMDB API but is not endorsed or certified by TMDB. Use of TMDB
 				materials is subject to TMDB’s terms and attribution requirements.
 			</p>
@@ -54,7 +65,7 @@ export const prerender = false;
 			<p>
 				Book metadata and covers may come from
 				<a href="https://openlibrary.org/" rel="noopener noreferrer" target="_blank"
-					>Open Library<span class="sr-only"> (opens in a new tab)</span></a
+					>Open Library<span class="sr-only"> {newTab}</span></a
 				>. Open Library is a project of the Internet Archive.
 			</p>
 
@@ -62,10 +73,10 @@ export const prerender = false;
 			<p>
 				Film and book award / accolade data and some Wikipedia link resolution may use
 				<a href="https://www.wikidata.org/" rel="noopener noreferrer" target="_blank"
-					>Wikidata<span class="sr-only"> (opens in a new tab)</span></a
+					>Wikidata<span class="sr-only"> {newTab}</span></a
 				>. Structured data from Wikidata is available under
 				<a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener noreferrer" target="_blank"
-					>CC0<span class="sr-only"> (opens in a new tab)</span></a
+					>CC0<span class="sr-only"> {newTab}</span></a
 				>. Credit is appreciated and shown where award data appears.
 			</p>
 
@@ -73,7 +84,7 @@ export const prerender = false;
 			<p>
 				“More info” / Wikipedia links point to articles on
 				<a href="https://www.wikipedia.org/" rel="noopener noreferrer" target="_blank"
-					>Wikipedia<span class="sr-only"> (opens in a new tab)</span></a
+					>Wikipedia<span class="sr-only"> {newTab}</span></a
 				>. Wikipedia text is typically available under Creative Commons licenses; this site links to
 				Wikipedia pages rather than reproducing article text. Wikipedia® is a registered trademark of
 				the Wikimedia Foundation.
@@ -83,7 +94,7 @@ export const prerender = false;
 			<p>
 				Some trip cover photos may come from
 				<a href="https://unsplash.com/" rel="noopener noreferrer" target="_blank"
-					>Unsplash<span class="sr-only"> (opens in a new tab)</span></a
+					>Unsplash<span class="sr-only"> {newTab}</span></a
 				>, subject to the Unsplash License and API guidelines.
 			</p>
 
@@ -91,19 +102,19 @@ export const prerender = false;
 			<p>
 				Maps may use
 				<a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank"
-					>OpenStreetMap<span class="sr-only"> (opens in a new tab)</span></a
+					>OpenStreetMap<span class="sr-only"> {newTab}</span></a
 				>
 				data (© OpenStreetMap contributors) and the
 				<a href="https://leafletjs.com/" rel="noopener noreferrer" target="_blank"
-					>Leaflet<span class="sr-only"> (opens in a new tab)</span></a
+					>Leaflet<span class="sr-only"> {newTab}</span></a
 				>
 				library. Admin place search may use
 				<a href="https://developers.google.com/maps" rel="noopener noreferrer" target="_blank"
-					>Google Places<span class="sr-only"> (opens in a new tab)</span></a
+					>Google Places<span class="sr-only"> {newTab}</span></a
 				>
 				when configured, otherwise
 				<a href="https://nominatim.org/" rel="noopener noreferrer" target="_blank"
-					>Nominatim<span class="sr-only"> (opens in a new tab)</span></a
+					>Nominatim<span class="sr-only"> {newTab}</span></a
 				>. Trip pages may offer Google Maps / GPX export so visitors can open the same places in their
 				own apps. Map tiles, geodata, and geocoding remain subject to their respective licenses and
 				terms. This site is not affiliated with Google.
@@ -122,7 +133,7 @@ export const prerender = false;
 			<p>
 				Some book community ratings may come from the
 				<a href="https://developers.google.com/books" rel="noopener noreferrer" target="_blank"
-					>Google Books API<span class="sr-only"> (opens in a new tab)</span></a
+					>Google Books API<span class="sr-only"> {newTab}</span></a
 				>. Google and Google Books are trademarks of Google LLC.
 			</p>
 
@@ -130,7 +141,7 @@ export const prerender = false;
 			<p>
 				When an OMDb API key is configured, film community ratings from IMDb may be fetched via
 				<a href="https://www.omdbapi.com/" rel="noopener noreferrer" target="_blank"
-					>OMDb<span class="sr-only"> (opens in a new tab)</span></a
+					>OMDb<span class="sr-only"> {newTab}</span></a
 				>. OMDb is not affiliated with IMDb.
 			</p>
 		</section>
@@ -151,7 +162,7 @@ export const prerender = false;
 				Third-party data can be incomplete or outdated. I do not guarantee that titles, dates,
 				covers, awards, map locations, or linked pages are always correct. If something looks wrong,
 				feel free to
-				<a href="/contact">get in touch</a>.
+				<a href={contactHref}>get in touch</a>.
 			</p>
 		</section>
 
@@ -159,7 +170,7 @@ export const prerender = false;
 			<h2>Contact</h2>
 			<p>
 				Questions about this disclaimer or the site:
-				<a href="/contact">contact page</a>.
+				<a href={contactHref}>contact page</a>.
 			</p>
 		</section>
 	</article>
