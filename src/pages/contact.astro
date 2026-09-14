@@ -36,9 +36,7 @@ const siteKey = env.TURNSTILE_SITE_KEY || '';
 					data-theme="dark"
 					data-appearance="interaction-only"
 				/>
-			) : (
-				<p class="empty">Turnstile is not configured locally — submissions still work in dev.</p>
-			)
+			) : null
 		}
 
 		<div class="form__actions">
