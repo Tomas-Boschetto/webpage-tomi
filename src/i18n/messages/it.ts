@@ -106,7 +106,7 @@ export const it: Record<MessageKey, string> = {
 	'disclaimer.unsplash.and': 'e alle',
 	'disclaimer.unsplash.guidelines': 'linee guida API',
 	'disclaimer.unsplash.post':
-		'. Le foto delle tappe che carichi tu restano separate e sono memorizzate nel bucket media di questo sito.',
+		'. Le foto delle tappe caricate su questo sito restano separate e sono memorizzate nel bucket media di questo sito.',
 	'disclaimer.maps.h': 'OpenStreetMap e Leaflet',
 	'disclaimer.maps.pre': 'Le mappe possono usare dati',
 	'disclaimer.maps.osm': 'OpenStreetMap',

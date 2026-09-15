@@ -106,7 +106,7 @@ export const fr: Record<MessageKey, string> = {
 	'disclaimer.unsplash.and': 'et aux',
 	'disclaimer.unsplash.guidelines': 'directives de l’API',
 	'disclaimer.unsplash.post':
-		'. Les photos d’étapes que vous téléversez vous-même sont distinctes et stockées dans le bucket média de ce site.',
+		'. Les photos d’étapes téléversées sur ce site sont distinctes et stockées dans le bucket média de ce site.',
 	'disclaimer.maps.h': 'OpenStreetMap et Leaflet',
 	'disclaimer.maps.pre': 'Les cartes peuvent utiliser des données',
 	'disclaimer.maps.osm': 'OpenStreetMap',

@@ -106,7 +106,7 @@ export const es: Record<MessageKey, string> = {
 	'disclaimer.unsplash.and': 'y a las',
 	'disclaimer.unsplash.guidelines': 'directrices de la API',
 	'disclaimer.unsplash.post':
-		'. Las fotos de paradas que subes tú son independientes y se almacenan en el bucket de medios de este sitio.',
+		'. Las fotos de paradas subidas a este sitio son independientes y se almacenan en el bucket de medios de este sitio.',
 	'disclaimer.maps.h': 'OpenStreetMap y Leaflet',
 	'disclaimer.maps.pre': 'Los mapas pueden usar datos de',
 	'disclaimer.maps.osm': 'OpenStreetMap',

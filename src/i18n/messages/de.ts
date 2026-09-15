@@ -106,7 +106,7 @@ export const de: Record<MessageKey, string> = {
 	'disclaimer.unsplash.and': 'und den',
 	'disclaimer.unsplash.guidelines': 'API-Richtlinien',
 	'disclaimer.unsplash.post':
-		'. Stop-Fotos, die du selbst hochlädst, sind davon getrennt und werden im Media-Bucket dieser Website gespeichert.',
+		'. Stop-Fotos, die auf dieser Website hochgeladen werden, sind davon getrennt und werden im Media-Bucket dieser Website gespeichert.',
 	'disclaimer.maps.h': 'OpenStreetMap & Leaflet',
 	'disclaimer.maps.pre': 'Karten können',
 	'disclaimer.maps.osm': 'OpenStreetMap',

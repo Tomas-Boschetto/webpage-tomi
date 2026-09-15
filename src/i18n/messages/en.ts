@@ -104,7 +104,7 @@ export const en = {
 	'disclaimer.unsplash.and': 'and',
 	'disclaimer.unsplash.guidelines': 'API guidelines',
 	'disclaimer.unsplash.post':
-		'. Stop photos you upload yourself are separate and stored in this site’s media bucket.',
+		'. Stop photos uploaded to this site are separate and stored in this site’s media bucket.',
 	'disclaimer.maps.h': 'OpenStreetMap & Leaflet',
 	'disclaimer.maps.pre': 'Maps may use',
 	'disclaimer.maps.osm': 'OpenStreetMap',
