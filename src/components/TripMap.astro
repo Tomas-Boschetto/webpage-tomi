@@ -1,6 +1,7 @@
 ---
 import type { ItineraryItem, TransportMode } from '../lib/types';
 import { TRANSPORT_MODE_MAP_STYLE, isTransportMode } from '../lib/types';
+import { MAP_TILE_ATTRIBUTION, MAP_TILES } from '../lib/map-tiles';
 import { DEFAULT_LOCALE, type Locale } from '../i18n/locales';
 import { t, placeTypeLabel, transportModeLabel } from '../i18n';
 
@@ -88,6 +89,8 @@ const routeSummaryId = 'trip-route-summary';
 				aria-describedby={routeSummaryId}
 				data-stops={JSON.stringify(payload)}
 				data-styles={JSON.stringify(styleByMode)}
+				data-tiles={JSON.stringify(MAP_TILES)}
+				data-tiles-attr={MAP_TILE_ATTRIBUTION}
 				data-trip-title={tripTitle}
 				data-arrived-by={t(locale, 'trip.arrivedBy', { mode: '{mode}' })}
 				data-view-itinerary={t(locale, 'trip.viewInItinerary')}
@@ -127,6 +130,8 @@ const routeSummaryId = 'trip-route-summary';
 					if (!root || !window.L) return;
 					var stops = JSON.parse(root.getAttribute('data-stops') || '[]');
 					var styles = JSON.parse(root.getAttribute('data-styles') || '{}');
+					var tiles = JSON.parse(root.getAttribute('data-tiles') || '{}');
+					var tilesAttr = root.getAttribute('data-tiles-attr') || '';
 					var tripTitle = root.getAttribute('data-trip-title') || 'Trip';
 					var arrivedByTpl = root.getAttribute('data-arrived-by') || 'Arrived by: {mode}';
 					var viewItinerary = root.getAttribute('data-view-itinerary') || 'View in itinerary';
@@ -138,6 +143,7 @@ const routeSummaryId = 'trip-route-summary';
 					var listPanel = document.querySelector('[data-itinerary-list]');
 					var hoverId = null;
 					var markers = {};
+					var casings = [];
 
 					function setMarkerHover(id, on) {
 						var marker = markers[id];
@@ -188,11 +194,32 @@ const routeSummaryId = 'trip-route-summary';
 
 					var map = window.L.map(root, { scrollWheelZoom: false });
 					root.removeAttribute('role');
-					window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-						attribution:
-							'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-						maxZoom: 19,
-					}).addTo(map);
+					var schemeMq =
+						window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+					function currentTileTheme() {
+						return schemeMq && schemeMq.matches === false ? 'light' : 'dark';
+					}
+					var tileLayer = null;
+					function applyTiles() {
+						var theme = currentTileTheme();
+						var spec = tiles[theme] || tiles.dark;
+						if (tileLayer) map.removeLayer(tileLayer);
+						tileLayer = window.L.tileLayer(spec.url, {
+							attribution: tilesAttr,
+							maxZoom: 20,
+							subdomains: 'abcd',
+						}).addTo(map);
+						return spec.casing || '#0a1412';
+					}
+					var casingColor = applyTiles();
+					if (schemeMq && schemeMq.addEventListener) {
+						schemeMq.addEventListener('change', function () {
+							casingColor = applyTiles();
+							casings.forEach(function (line) {
+								line.setStyle({ color: casingColor });
+							});
+						});
+					}
 
 					var bounds = [];
 					stops.forEach(function (stop, index) {
@@ -234,18 +261,29 @@ const routeSummaryId = 'trip-route-summary';
 						if (index > 0) {
 							var prev = stops[index - 1];
 							var style = styles[stop.mode] || styles.other || { color: '#9a9588', weight: 3 };
-							window.L.polyline(
-								[
-									[prev.lat, prev.lng],
-									[stop.lat, stop.lng],
-								],
-								{
-									color: style.color,
-									weight: style.weight || 3,
-									dashArray: style.dashArray || null,
-									opacity: 0.9,
-								},
-							).addTo(map);
+							var pts = [
+								[prev.lat, prev.lng],
+								[stop.lat, stop.lng],
+							];
+							var weight = style.weight || 3;
+							casings.push(
+								window.L.polyline(pts, {
+									color: casingColor,
+									weight: weight + 4,
+									opacity: 0.72,
+									lineCap: 'round',
+									lineJoin: 'round',
+									interactive: false,
+								}).addTo(map),
+							);
+							window.L.polyline(pts, {
+								color: style.color,
+								weight: weight,
+								dashArray: style.dashArray || null,
+								opacity: 0.95,
+								lineCap: 'round',
+								lineJoin: 'round',
+							}).addTo(map);
 						}
 					});
 

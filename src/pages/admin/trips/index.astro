@@ -107,6 +107,40 @@ const countries = authorized
 			/** @type {Promise<void> | null} */
 			let leafletPromise = null;
 
+			const MAP_TILES = {
+				dark: {
+					url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+				},
+				light: {
+					url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+				},
+			};
+			const MAP_TILE_ATTRIBUTION =
+				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+			function addThemedTiles(map) {
+				let layer;
+				function apply() {
+					const dark =
+						!window.matchMedia ||
+						window.matchMedia('(prefers-color-scheme: dark)').matches;
+					const spec = dark ? MAP_TILES.dark : MAP_TILES.light;
+					if (layer) map.removeLayer(layer);
+					layer = window.L.tileLayer(spec.url, {
+						attribution: MAP_TILE_ATTRIBUTION,
+						maxZoom: 20,
+						subdomains: 'abcd',
+					}).addTo(map);
+				}
+				apply();
+				const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+				if (mq && mq.addEventListener && !map._themeTilesBound) {
+					map._themeTilesBound = true;
+					mq.addEventListener('change', apply);
+				}
+				return layer;
+			}
+
 			function escapeHtml(value) {
 				return String(value)
 					.replaceAll('&', '&amp;')
@@ -217,10 +251,7 @@ const countries = authorized
 
 				const L = window.L;
 				const map = L.map(mapEl, { scrollWheelZoom: false });
-				L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-					attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-					maxZoom: 19,
-				}).addTo(map);
+				addThemedTiles(map);
 
 				const mappable = stops.filter((s) => s.lat != null && s.lng != null);
 				if (!mappable.length) {
@@ -262,10 +293,7 @@ const countries = authorized
 
 				const L = window.L;
 				const map = L.map(mapEl, { scrollWheelZoom: true });
-				L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-					attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-					maxZoom: 19,
-				}).addTo(map);
+				addThemedTiles(map);
 
 				/** @type {any} */
 				let marker = null;

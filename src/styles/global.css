@@ -139,6 +139,7 @@
 	--dur-fast: 0.18s;
 	--dur: 0.28s;
 	--dur-slow: 0.6s;
+	--stagger-step: 0.05s;
 
 	/* --- Layout ----------------------------------------------------------- */
 	--max: 72rem;
@@ -172,7 +173,7 @@
 		--ink-muted: #4f625a;
 		--ink-on-accent: #fff8f0;
 
-		--accent: #bd6220;
+		--accent: #b0571c;
 		--accent-soft: #a5521a;
 		--accent-ink: #8f4715;
 		--accent-glow: rgba(189, 98, 32, 0.95);
@@ -975,7 +976,8 @@ p {
 	box-shadow: var(--shadow-sm);
 	opacity: 0;
 	transform: translateY(12px);
-	animation: rise 0.7s var(--ease) forwards;
+	animation: rise var(--dur-slow) var(--ease) both;
+	animation-delay: calc(var(--stagger-step, 0.05s) * 8);
 	transition:
 		border-color var(--dur) var(--ease),
 		box-shadow var(--dur) var(--ease);
@@ -1056,19 +1058,28 @@ p {
 }
 
 .rec-item:nth-child(1) {
-	animation-delay: 0.05s;
+	animation-delay: 0s;
 }
 .rec-item:nth-child(2) {
-	animation-delay: 0.12s;
+	animation-delay: calc(var(--stagger-step, 0.05s) * 1);
 }
 .rec-item:nth-child(3) {
-	animation-delay: 0.19s;
+	animation-delay: calc(var(--stagger-step, 0.05s) * 2);
 }
 .rec-item:nth-child(4) {
-	animation-delay: 0.26s;
+	animation-delay: calc(var(--stagger-step, 0.05s) * 3);
 }
 .rec-item:nth-child(5) {
-	animation-delay: 0.33s;
+	animation-delay: calc(var(--stagger-step, 0.05s) * 4);
+}
+.rec-item:nth-child(6) {
+	animation-delay: calc(var(--stagger-step, 0.05s) * 5);
+}
+.rec-item:nth-child(7) {
+	animation-delay: calc(var(--stagger-step, 0.05s) * 6);
+}
+.rec-item:nth-child(8) {
+	animation-delay: calc(var(--stagger-step, 0.05s) * 7);
 }
 
 .rec-item__meta {
@@ -1672,6 +1683,23 @@ p {
 	border-radius: calc(var(--radius) + 0.15rem);
 	overflow: hidden;
 	background: var(--map-canvas);
+}
+
+.leaflet-container {
+	background: var(--map-canvas);
+	font-family: var(--font-ui);
+}
+
+.leaflet-bar a,
+.leaflet-bar a:hover {
+	background: var(--surface-raised);
+	color: var(--ink);
+	border-bottom-color: var(--line);
+}
+
+.leaflet-bar a.leaflet-disabled {
+	background: var(--surface-sunken);
+	color: var(--muted);
 }
 
 .trip-map__marker--hover {
@@ -2499,7 +2527,7 @@ p {
 @keyframes rise {
 	from {
 		opacity: 0;
-		transform: translateY(14px);
+		transform: translateY(12px);
 	}
 	to {
 		opacity: 1;
