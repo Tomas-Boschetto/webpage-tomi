@@ -6,9 +6,9 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 ## Carry over (finish / verify)
 
 - [x] **Unsplash** — `UNSPLASH_ACCESS_KEY` in `.dev.vars` + production; Fetch photo hotlinks CDN URLs, triggers download endpoint, stores photographer credit; disclaimer updated
-- [ ] **Trip covers** — add/adjust covers on live trips (paste URL until Unsplash works; Fetch after key is live)
-- [ ] **Stop photos** — upload at least one photo on a published stop; confirm it shows on `/trips/[id]` and loads from `/media/...`
-- [ ] **Travel tab** — sanity-check list + map split and country hover filter on desktop and phone
+- [x] **Trip covers** — add/adjust covers on live trips (paste URL until Unsplash works; Fetch after key is live)
+- [x] **Stop photos** — upload at least one photo on a published stop; confirm it shows on `/trips/[id]` and loads from `/media/...`
+- [x] **Travel tab** — sanity-check list + map split and country hover filter on desktop and phone
 - [ ] **Deploy habit** — after any code change: commit → `npm run deploy` (merge alone does not update the Worker)
 
 ## Movies & books — richer lookup

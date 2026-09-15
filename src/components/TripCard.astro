@@ -55,6 +55,22 @@ const unsplashHref =
 					loading="lazy"
 					decoding="async"
 				/>
+				{
+					unsplashCredit && (
+						<p class="trip-card__credit">
+							{t(locale, 'recs.attr.photoBy')}{' '}
+							<a href={photographerHref} rel="noopener noreferrer" target="_blank">
+								{photographerName}
+								<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
+							</a>{' '}
+							{t(locale, 'recs.attr.on')}{' '}
+							<a href={unsplashHref} rel="noopener noreferrer" target="_blank">
+								Unsplash
+								<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
+							</a>
+						</p>
+					)
+				}
 			</div>
 		)
 	}
@@ -63,22 +79,6 @@ const unsplashHref =
 		<a class="rec-item__title-link" href={tripHref}>{trip.title}</a>
 	</h3>
 	{summaryTeaser && <p class="rec-item__summary">{summaryTeaser}</p>}
-	{
-		unsplashCredit && (
-			<p class="trip-card__credit">
-				{t(locale, 'recs.attr.photoBy')}{' '}
-				<a href={photographerHref} rel="noopener noreferrer" target="_blank">
-					{photographerName}
-					<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
-				</a>{' '}
-				{t(locale, 'recs.attr.on')}{' '}
-				<a href={unsplashHref} rel="noopener noreferrer" target="_blank">
-					Unsplash
-					<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
-				</a>
-			</p>
-		)
-	}
 	<a class="rec-item__link" href={tripHref}>
 		{t(locale, 'trip.viewItinerary')}
 		<span class="sr-only">{t(locale, 'recs.srForTitle', { title: trip.title })}</span>
