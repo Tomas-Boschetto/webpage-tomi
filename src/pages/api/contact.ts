@@ -2,9 +2,11 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { Resend } from 'resend';
 import { checkContactRateLimit, clientIp } from '../../lib/rate-limit';
-import { verifyTurnstile } from '../../lib/turnstile';
+import { parseTurnstileHostnames, verifyTurnstile } from '../../lib/turnstile';
 
 export const prerender = false;
+
+const TURNSTILE_ACTION = 'contact';
 
 export const POST: APIRoute = async ({ request }) => {
 	let body: unknown;
@@ -31,6 +33,40 @@ export const POST: APIRoute = async ({ request }) => {
 	}
 
 	const ip = clientIp(request);
+
+	const secret = env.TURNSTILE_SECRET_KEY;
+	if (secret) {
+		const expectedHostnames = parseTurnstileHostnames(env.TURNSTILE_HOSTNAMES);
+		if (
+			typeof turnstileToken !== 'string' ||
+			turnstileToken.length === 0 ||
+			turnstileToken.length > 2048 ||
+			expectedHostnames.size === 0
+		) {
+			return Response.json({ error: 'Complete the bot check and try again.' }, { status: 403 });
+		}
+
+		let result;
+		try {
+			result = await verifyTurnstile(
+				turnstileToken,
+				secret,
+				ip === 'unknown' ? undefined : ip,
+			);
+		} catch {
+			return Response.json({ error: 'Bot check failed. Please try again.' }, { status: 403 });
+		}
+
+		if (
+			!result.success ||
+			result.action !== TURNSTILE_ACTION ||
+			!result.hostname ||
+			!expectedHostnames.has(result.hostname)
+		) {
+			return Response.json({ error: 'Bot check failed. Please try again.' }, { status: 403 });
+		}
+	}
+
 	const rate = await checkContactRateLimit(env.DB, ip);
 	if (!rate.allowed) {
 		return Response.json(
@@ -42,17 +78,6 @@ export const POST: APIRoute = async ({ request }) => {
 					: undefined,
 			},
 		);
-	}
-
-	const secret = env.TURNSTILE_SECRET_KEY;
-	if (secret) {
-		if (!turnstileToken) {
-			return Response.json({ error: 'Complete the bot check and try again.' }, { status: 400 });
-		}
-		const ok = await verifyTurnstile(turnstileToken, secret, ip === 'unknown' ? undefined : ip);
-		if (!ok) {
-			return Response.json({ error: 'Bot check failed. Please try again.' }, { status: 400 });
-		}
 	}
 
 	const to = env.CONTACT_TO_EMAIL;

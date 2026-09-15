@@ -41,8 +41,9 @@ In the Worker/Pages project → **Settings → Variables and Secrets**, set:
 | `CONTACT_TO_EMAIL` | **secret** | Your inbox — do not put this in the public repo |
 | `CONTACT_FROM_EMAIL` | var | Verified sender in Resend |
 | `SITE_NAME` | var | e.g. `Tomas Boschetto` |
-| `TURNSTILE_SITE_KEY` | var | From Turnstile widget |
+| `TURNSTILE_SITE_KEY` | var | From Turnstile widget (public sitekey) |
 | `TURNSTILE_SECRET_KEY` | secret | From Turnstile |
+| `TURNSTILE_HOSTNAMES` | var | Comma-separated frontend hosts for siteverify (prod: `tomasboschetto.com,www.tomasboschetto.com` — never include localhost in production) |
 | `RESEND_API_KEY` | secret | From Resend |
 | `TMDB_API_KEY` | **secret** | From [TMDB API settings](https://www.themoviedb.org/settings/api) — movie metadata + poster lookup in admin |
 | `OMDB_API_KEY` | secret (optional) | From [OMDb](https://www.omdbapi.com/apikey.aspx) — IMDb community ratings on movie lookup |

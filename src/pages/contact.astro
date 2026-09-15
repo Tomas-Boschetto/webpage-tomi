@@ -51,16 +51,7 @@ const msgNetwork = t(locale, 'contact.network');
 			<textarea name="message" required maxlength="4000" aria-required="true"></textarea>
 		</label>
 
-		{
-			siteKey ? (
-				<div
-					class="cf-turnstile"
-					data-sitekey={siteKey}
-					data-theme="dark"
-					data-appearance="interaction-only"
-				/>
-			) : null
-		}
+		{siteKey ? <div id="contact-turnstile" data-sitekey={siteKey} /> : null}
 
 		<div class="form__actions">
 			<button class="btn btn--primary" type="submit">{t(locale, 'contact.send')}</button>
@@ -83,13 +74,57 @@ const msgNetwork = t(locale, 'contact.network');
 
 {
 	siteKey && (
-		<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+		<>
+			<script is:inline define:vars={{ siteKey }}>
+				window.__contactTurnstile = { siteKey, widgetId: null };
+				window.onloadTurnstileCallback = function () {
+					const host = document.getElementById('contact-turnstile');
+					if (!host || !window.turnstile || window.__contactTurnstile.widgetId != null) return;
+					window.__contactTurnstile.widgetId = window.turnstile.render(host, {
+						sitekey: siteKey,
+						action: 'contact',
+						theme: 'dark',
+					});
+				};
+			</script>
+			<script
+				is:inline
+				src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onloadTurnstileCallback"
+				async
+				defer
+			/>
+		</>
 	)
 }
 
 <script>
 	const form = document.getElementById('contact-form') as HTMLFormElement | null;
 	const statusEl = document.getElementById('contact-status');
+
+	type TurnstileApi = {
+		reset: (widgetId?: string) => void;
+		getResponse: (widgetId?: string) => string;
+	};
+
+	type ContactTurnstileState = {
+		siteKey: string;
+		widgetId: string | null;
+	};
+
+	function getTurnstile(): TurnstileApi | undefined {
+		return (window as unknown as { turnstile?: TurnstileApi }).turnstile;
+	}
+
+	function getTurnstileState(): ContactTurnstileState | undefined {
+		return (window as unknown as { __contactTurnstile?: ContactTurnstileState }).__contactTurnstile;
+	}
+
+	function resetTurnstile() {
+		const api = getTurnstile();
+		const state = getTurnstileState();
+		if (!api || !state || state.widgetId == null) return;
+		api.reset(state.widgetId);
+	}
 
 	form?.addEventListener('submit', async (event) => {
 		event.preventDefault();
@@ -99,15 +134,17 @@ const msgNetwork = t(locale, 'contact.network');
 		statusEl.textContent = form.dataset.msgSending || 'Sending…';
 
 		const data = new FormData(form);
-		const turnstileInput = form.querySelector(
-			'[name="cf-turnstile-response"]',
-		) as HTMLInputElement | null;
+		const api = getTurnstile();
+		const state = getTurnstileState();
+		const turnstileToken =
+			(state?.widgetId != null && api ? api.getResponse(state.widgetId) : '') ||
+			String(data.get('cf-turnstile-response') || '');
 
 		const payload = {
 			name: String(data.get('name') || ''),
 			email: String(data.get('email') || ''),
 			message: String(data.get('message') || ''),
-			turnstileToken: turnstileInput?.value || '',
+			turnstileToken,
 		};
 
 		try {
@@ -121,15 +158,18 @@ const msgNetwork = t(locale, 'contact.network');
 			if (!res.ok) {
 				statusEl.className = 'form__status form__status--err';
 				statusEl.textContent = json.error || form.dataset.msgError || 'Something went wrong.';
+				resetTurnstile();
 				return;
 			}
 
 			statusEl.className = 'form__status form__status--ok';
 			statusEl.textContent = form.dataset.msgSent || 'Message sent.';
 			form.reset();
+			resetTurnstile();
 		} catch {
 			statusEl.className = 'form__status form__status--err';
 			statusEl.textContent = form.dataset.msgNetwork || 'Network error.';
+			resetTurnstile();
 		}
 	});
 </script>

@@ -3,9 +3,11 @@
 # Allow /admin and /api/admin without Cloudflare Access locally
 ADMIN_DEV_BYPASS=true
 
-# Cloudflare Turnstile (optional locally — contact skips verify if unset)
+# Cloudflare Turnstile (contact form)
 TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
+# Comma-separated frontend hostnames allowed by siteverify (local: localhost,127.0.0.1)
+TURNSTILE_HOSTNAMES=localhost,127.0.0.1
 
 # Resend (optional locally — contact logs instead of sending if unset)
 RESEND_API_KEY=

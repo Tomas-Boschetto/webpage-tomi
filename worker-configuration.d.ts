@@ -10,6 +10,7 @@ interface __BaseEnv_Env {
 	ADMIN_DEV_BYPASS: string;
 	TURNSTILE_SITE_KEY: string;
 	TURNSTILE_SECRET_KEY: string;
+	TURNSTILE_HOSTNAMES: string;
 	RESEND_API_KEY: string;
 	CONTACT_FROM_EMAIL: string;
 	CONTACT_TO_EMAIL: string;
@@ -24,7 +25,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "SITE_NAME" | "LINKEDIN_URL" | "ADMIN_DEV_BYPASS" | "TURNSTILE_SITE_KEY" | "TURNSTILE_SECRET_KEY" | "RESEND_API_KEY" | "CONTACT_FROM_EMAIL" | "CONTACT_TO_EMAIL" | "TMDB_API_KEY" | "UNSPLASH_ACCESS_KEY">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "SITE_NAME" | "LINKEDIN_URL" | "ADMIN_DEV_BYPASS" | "TURNSTILE_SITE_KEY" | "TURNSTILE_SECRET_KEY" | "TURNSTILE_HOSTNAMES" | "RESEND_API_KEY" | "CONTACT_FROM_EMAIL" | "CONTACT_TO_EMAIL" | "TMDB_API_KEY" | "UNSPLASH_ACCESS_KEY">> {}
 }
 
 // Begin runtime types

@@ -28,6 +28,8 @@
 	"vars": {
 		"SITE_NAME": "Tomas Boschetto",
 		"LINKEDIN_URL": "https://www.linkedin.com/in/tomasboschetto/",
-		"SITE_URL": "https://tomasboschetto.com"
+		"SITE_URL": "https://tomasboschetto.com",
+		"TURNSTILE_SITE_KEY": "0x4AAAAAAE0I4rWadj2Bs89Y",
+		"TURNSTILE_HOSTNAMES": "tomasboschetto.com,www.tomasboschetto.com"
 	}
 }
