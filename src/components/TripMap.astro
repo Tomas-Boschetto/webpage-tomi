@@ -204,11 +204,16 @@ const routeSummaryId = 'trip-route-summary';
 						var theme = currentTileTheme();
 						var spec = tiles[theme] || tiles.dark;
 						if (tileLayer) map.removeLayer(tileLayer);
-						tileLayer = window.L.tileLayer(spec.url, {
+						var group = window.L.layerGroup();
+						var maxZoom = spec.maxZoom || 16;
+						window.L.tileLayer(spec.url, {
 							attribution: tilesAttr,
-							maxZoom: 20,
-							subdomains: 'abcd',
-						}).addTo(map);
+							maxZoom: maxZoom,
+						}).addTo(group);
+						if (spec.labels) {
+							window.L.tileLayer(spec.labels, { maxZoom: maxZoom }).addTo(group);
+						}
+						tileLayer = group.addTo(map);
 						return spec.casing || '#0a1412';
 					}
 					var casingColor = applyTiles();

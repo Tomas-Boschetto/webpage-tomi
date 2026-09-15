@@ -1,16 +1,26 @@
-/** CARTO basemaps (OSM data). Dark Matter in dark mode, Positron in light. */
+/**
+ * Theme-aware raster tiles.
+ * CARTO Dark Matter / Positron now watermark "API key required" without a key,
+ * so these are Esri Canvas Gray (dark/light), which need no key.
+ */
 
 export const MAP_TILE_ATTRIBUTION =
-	'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+	'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, TomTom, Garmin, FAO, NOAA, USGS';
 
 export const MAP_TILES = {
 	dark: {
-		url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+		url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+		labels:
+			'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
 		casing: '#0a1412',
+		maxZoom: 16,
 	},
 	light: {
-		url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+		url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+		labels:
+			'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
 		casing: '#fffdf8',
+		maxZoom: 16,
 	},
 } as const;
 
