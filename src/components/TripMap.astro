@@ -55,7 +55,7 @@ const routeSummaryId = 'trip-route-summary';
 
 {
 	mappable.length > 0 && (
-		<section class="trip-map-wrap" aria-label={t(locale, 'trip.map.aria')}>
+		<div class="trip-map-wrap" aria-label={t(locale, 'trip.map.aria')}>
 			<div class="trip-map__header">
 				<div>
 					<h2 class="trip-map__title">{t(locale, 'trip.map')}</h2>
@@ -108,7 +108,7 @@ const routeSummaryId = 'trip-route-summary';
 					</ul>
 				)
 			}
-		</section>
+		</div>
 	)
 }
 
@@ -132,6 +132,60 @@ const routeSummaryId = 'trip-route-summary';
 					var viewItinerary = root.getAttribute('data-view-itinerary') || 'View in itinerary';
 					if (!stops.length) return;
 
+					var preferReduced =
+						window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+					var scrollBehavior = preferReduced ? 'auto' : 'smooth';
+					var listPanel = document.querySelector('[data-itinerary-list]');
+					var hoverId = null;
+					var markers = {};
+
+					function setMarkerHover(id, on) {
+						var marker = markers[id];
+						if (!marker || !marker._icon) return;
+						marker._icon.classList.toggle('trip-map__marker--hover', on);
+						if (on) marker.setZIndexOffset(500);
+						else marker.setZIndexOffset(0);
+					}
+
+					function clearHover() {
+						if (!hoverId) return;
+						var prev = document.getElementById('stop-' + hoverId);
+						if (prev) prev.classList.remove('itinerary__item--hover');
+						setMarkerHover(hoverId, false);
+						hoverId = null;
+					}
+
+					function setHover(id, fromMap) {
+						if (hoverId === id) return;
+						clearHover();
+						if (!id) return;
+						hoverId = id;
+						var el = document.getElementById('stop-' + id);
+						if (el) {
+							el.classList.add('itinerary__item--hover');
+							if (fromMap && listPanel) {
+								var panelRect = listPanel.getBoundingClientRect();
+								var elRect = el.getBoundingClientRect();
+								var outOfView =
+									elRect.top < panelRect.top || elRect.bottom > panelRect.bottom;
+								if (outOfView) {
+									el.scrollIntoView({ behavior: scrollBehavior, block: 'nearest' });
+								}
+							}
+						}
+						setMarkerHover(id, true);
+					}
+
+					function setActive(id) {
+						document.querySelectorAll('.itinerary__item--active').forEach(function (node) {
+							node.classList.remove('itinerary__item--active');
+						});
+						var el = document.getElementById('stop-' + id);
+						if (!el) return;
+						el.classList.add('itinerary__item--active');
+						if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+					}
+
 					var map = window.L.map(root, { scrollWheelZoom: false });
 					root.removeAttribute('role');
 					window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -140,7 +194,6 @@ const routeSummaryId = 'trip-route-summary';
 						maxZoom: 19,
 					}).addTo(map);
 
-					var markers = {};
 					var bounds = [];
 					stops.forEach(function (stop, index) {
 						var marker = window.L.marker([stop.lat, stop.lng], {
@@ -163,15 +216,17 @@ const routeSummaryId = 'trip-route-summary';
 								'</a>',
 						);
 						marker.on('click', function () {
+							setActive(stop.id);
 							var el = document.getElementById('stop-' + stop.id);
 							if (!el) return;
-							document.querySelectorAll('.itinerary__item--active').forEach(function (node) {
-								node.classList.remove('itinerary__item--active');
-							});
-							el.classList.add('itinerary__item--active');
-							if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
-							el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+							el.scrollIntoView({ behavior: scrollBehavior, block: 'center' });
 							el.focus({ preventScroll: true });
+						});
+						marker.on('mouseover', function () {
+							setHover(stop.id, true);
+						});
+						marker.on('mouseout', function () {
+							clearHover();
 						});
 						markers[stop.id] = marker;
 						bounds.push([stop.lat, stop.lng]);
@@ -200,16 +255,35 @@ const routeSummaryId = 'trip-route-summary';
 						map.fitBounds(bounds, { padding: [40, 40] });
 					}
 
+					requestAnimationFrame(function () {
+						map.invalidateSize();
+					});
+
+					document.querySelectorAll('.itinerary__item[data-stop-id]').forEach(function (el) {
+						var id = el.getAttribute('data-stop-id');
+						el.addEventListener('pointerenter', function () {
+							setHover(id, false);
+						});
+						el.addEventListener('pointerleave', function () {
+							clearHover();
+						});
+						el.addEventListener('focusin', function () {
+							setHover(id, false);
+						});
+						el.addEventListener('focusout', function (event) {
+							if (el.contains(event.relatedTarget)) return;
+							clearHover();
+						});
+					});
+
 					document.querySelectorAll('[data-stop-id]').forEach(function (el) {
-						el.addEventListener('click', function () {
+						el.addEventListener('click', function (event) {
 							var id = el.getAttribute('data-stop-id');
 							var marker = markers[id];
 							if (!marker) return;
-							var item = document.getElementById('stop-' + id);
-							document.querySelectorAll('.itinerary__item--active').forEach(function (node) {
-								node.classList.remove('itinerary__item--active');
-							});
-							if (item) item.classList.add('itinerary__item--active');
+							// Only treat dedicated "show on map" / item clicks; ignore nested links.
+							if (event.target.closest && event.target.closest('a[href]')) return;
+							setActive(id);
 							map.panTo(marker.getLatLng());
 							marker.openPopup();
 						});
