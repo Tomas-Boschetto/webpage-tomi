@@ -232,8 +232,7 @@ export const fr: Record<MessageKey, string> = {
 	'recs.srNewTab': '(s’ouvre dans un nouvel onglet)',
 
 	'trip.map': 'Carte',
-	'trip.map.lead':
-		'Les lignes montrent comment je me suis déplacé entre les étapes. Cliquez sur une épingle pour y aller.',
+	'trip.map.lead': 'Cliquez sur une épingle pour y aller.',
 	'trip.map.aria': 'Carte du voyage',
 	'trip.map.canvas': 'Carte interactive des étapes',
 	'trip.route.summary': 'Résumé de l’itinéraire',

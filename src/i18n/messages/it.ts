@@ -232,8 +232,7 @@ export const it: Record<MessageKey, string> = {
 	'recs.srNewTab': '(si apre in una nuova scheda)',
 
 	'trip.map': 'Mappa',
-	'trip.map.lead':
-		'Le linee mostrano come mi sono spostato tra le tappe. Clicca un segnalino per andare a quella tappa.',
+	'trip.map.lead': 'Clicca un segnalino per andare a quella tappa.',
 	'trip.map.aria': 'Mappa del viaggio',
 	'trip.map.canvas': 'Mappa interattiva delle tappe',
 	'trip.route.summary': 'Riepilogo del percorso',

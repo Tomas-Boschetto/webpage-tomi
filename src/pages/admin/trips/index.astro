@@ -5,7 +5,7 @@ import { env } from 'cloudflare:workers';
 import { isAdminAuthorized } from '../../../lib/auth';
 import { listCountriesFromStops } from '../../../lib/countries';
 import { PLACE_TYPES, PLACE_TYPE_LABELS, TRANSPORT_MODES, TRANSPORT_MODE_LABELS } from '../../../lib/types';
-import { mapTiles } from '../../../lib/map-tiles';
+import { ESRI_TILES, mapTiles } from '../../../lib/map-tiles';
 
 export const prerender = false;
 
@@ -22,7 +22,7 @@ const transportModeOptions = TRANSPORT_MODES.map((mode) => ({
 const countries = authorized
 	? await listCountriesFromStops(env.DB, { publishedOnly: false })
 	: [];
-const tiles = mapTiles(env.CARTO_API_KEY);
+const tiles = mapTiles(env.CARTO_API_KEY, Astro.url.hostname, env.SITE_URL);
 ---
 
 <BaseLayout title="Admin · Trips" description="Manage travel trips and itineraries." robots="noindex, nofollow">
@@ -63,6 +63,8 @@ const tiles = mapTiles(env.CARTO_API_KEY);
 					data-transport-modes={JSON.stringify(transportModeOptions)}
 					data-map-tiles={JSON.stringify({ dark: tiles.dark, light: tiles.light })}
 					data-map-tiles-attr={tiles.attribution}
+					data-map-tiles-fallback={JSON.stringify({ dark: ESRI_TILES.dark, light: ESRI_TILES.light })}
+					data-map-tiles-fallback-attr={ESRI_TILES.attribution}
 				>
 					<section class="admin-add admin-add--leading">
 						<button class="btn btn--primary" type="button" id="add-trip-toggle" aria-expanded="false">
@@ -113,26 +115,37 @@ const tiles = mapTiles(env.CARTO_API_KEY);
 
 			const MAP_TILES = JSON.parse(app?.dataset.mapTiles || '{}');
 			const MAP_TILE_ATTRIBUTION = app?.dataset.mapTilesAttr || '';
+			const MAP_TILES_FALLBACK = JSON.parse(app?.dataset.mapTilesFallback || '{}');
+			const MAP_TILE_FALLBACK_ATTR = app?.dataset.mapTilesFallbackAttr || '';
 
 			function addThemedTiles(map) {
 				let layer;
+				let usingFallback = false;
 				function apply() {
 					const dark =
 						!window.matchMedia ||
 						window.matchMedia('(prefers-color-scheme: dark)').matches;
-					const spec = dark ? MAP_TILES.dark : MAP_TILES.light;
+					const set = usingFallback ? MAP_TILES_FALLBACK : MAP_TILES;
+					const spec = dark ? set.dark : set.light;
+					const attr = usingFallback ? MAP_TILE_FALLBACK_ATTR : MAP_TILE_ATTRIBUTION;
 					if (!spec?.url) return;
 					if (layer) map.removeLayer(layer);
 					const group = window.L.layerGroup();
 					const maxZoom = spec.maxZoom || 16;
 					const layerOpts = {
-						attribution: MAP_TILE_ATTRIBUTION,
+						attribution: attr,
 						maxZoom,
 					};
 					if (spec.subdomains) layerOpts.subdomains = spec.subdomains;
-					window.L.tileLayer(spec.url, layerOpts).addTo(group);
+					const raster = window.L.tileLayer(spec.url, layerOpts);
+					raster.on('tileerror', () => {
+						if (usingFallback) return;
+						usingFallback = true;
+						apply();
+					});
+					raster.addTo(group);
 					if (spec.labels) {
-						const labelOpts = { maxZoom };
+						const labelOpts = { attribution: attr, maxZoom };
 						if (spec.subdomains) labelOpts.subdomains = spec.subdomains;
 						window.L.tileLayer(spec.labels, labelOpts).addTo(group);
 					}

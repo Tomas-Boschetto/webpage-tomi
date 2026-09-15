@@ -232,8 +232,7 @@ export const es: Record<MessageKey, string> = {
 	'recs.srNewTab': '(se abre en una pestaña nueva)',
 
 	'trip.map': 'Mapa',
-	'trip.map.lead':
-		'Las líneas muestran cómo me moví entre paradas. Haz clic en un marcador para ir a esa parada.',
+	'trip.map.lead': 'Haz clic en un marcador para ir a esa parada.',
 	'trip.map.aria': 'Mapa del viaje',
 	'trip.map.canvas': 'Mapa interactivo de las paradas',
 	'trip.route.summary': 'Resumen de la ruta',

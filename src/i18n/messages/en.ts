@@ -230,7 +230,7 @@ export const en = {
 	'recs.srNewTab': '(opens in a new tab)',
 
 	'trip.map': 'Map',
-	'trip.map.lead': 'Lines show how I moved between stops. Click a pin to jump to that stop.',
+	'trip.map.lead': 'Click a pin to jump to that stop.',
 	'trip.map.aria': 'Trip map',
 	'trip.map.canvas': 'Interactive map of trip stops',
 	'trip.route.summary': 'Route summary',

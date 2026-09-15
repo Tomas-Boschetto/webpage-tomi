@@ -1782,32 +1782,6 @@ p {
 	height: min(52vh, 28rem);
 }
 
-.trip-map__legend {
-	list-style: none;
-	margin: 0.75rem 0 0;
-	padding: 0;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.55rem 1rem;
-	font-family: var(--font-ui);
-	font-size: 0.82rem;
-	color: var(--muted);
-}
-
-.trip-map__legend li {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.4rem;
-}
-
-.trip-map__legend-swatch {
-	display: inline-block;
-	width: 1.35rem;
-	height: 0.35rem;
-	border-radius: 999px;
-	background: var(--accent);
-}
-
 .travel-split {
 	display: grid;
 	gap: 1.25rem;

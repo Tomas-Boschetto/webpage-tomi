@@ -232,8 +232,7 @@ export const de: Record<MessageKey, string> = {
 	'recs.srNewTab': '(öffnet in neuem Tab)',
 
 	'trip.map': 'Karte',
-	'trip.map.lead':
-		'Linien zeigen, wie ich zwischen Stopps unterwegs war. Klicke einen Pin, um zu diesem Stopp zu springen.',
+	'trip.map.lead': 'Klicke einen Pin, um zu diesem Stopp zu springen.',
 	'trip.map.aria': 'Reisekarte',
 	'trip.map.canvas': 'Interaktive Karte der Stopps',
 	'trip.route.summary': 'Routenübersicht',

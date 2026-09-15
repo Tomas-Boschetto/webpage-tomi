@@ -181,21 +181,6 @@ export const TRANSPORT_MODE_LABELS: Record<TransportMode, string> = {
 	other: 'Other',
 };
 
-/** Stroke styles for Leaflet paths between stops. */
-export const TRANSPORT_MODE_MAP_STYLE: Record<
-	TransportMode,
-	{ color: string; dashArray?: string; weight: number }
-> = {
-	walk: { color: '#c4a574', dashArray: '2 8', weight: 3 },
-	transit: { color: '#d9773a', weight: 4 },
-	taxi: { color: '#e8b84a', dashArray: '8 6', weight: 3 },
-	car: { color: '#7a9e8e', weight: 4 },
-	bike: { color: '#6b9f7a', dashArray: '6 4', weight: 3 },
-	flight: { color: '#8b9dc3', dashArray: '12 8', weight: 3 },
-	boat: { color: '#5b8fa8', dashArray: '10 5', weight: 3 },
-	other: { color: '#9a9588', dashArray: '4 6', weight: 3 },
-};
-
 export function isRecommendationType(value: unknown): value is RecommendationType {
 	return value === 'movie' || value === 'book';
 }
