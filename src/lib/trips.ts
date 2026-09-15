@@ -8,12 +8,26 @@ import type {
 import { isPlaceType, isTransportMode } from './types';
 import { emptyToNull, isSafeHttpUrl, isSafeImageUrl } from './validate';
 
+const TRIP_STARTED_AT = `(
+	SELECT MIN(i.visited_at)
+	FROM itinerary_items i
+	WHERE i.trip_id = t.id
+	  AND i.visited_at IS NOT NULL
+	  AND TRIM(i.visited_at) != ''
+)`;
+
+const TRIP_DATE_ORDER = `
+	CASE WHEN ${TRIP_STARTED_AT} IS NULL OR ${TRIP_STARTED_AT} = '' THEN 1 ELSE 0 END,
+	${TRIP_STARTED_AT} DESC,
+	t.created_at DESC`;
+
 export async function listPublishedTrips(db: D1Database): Promise<Trip[]> {
 	const { results } = await db
 		.prepare(
-			`SELECT * FROM trips
-			 WHERE published = 1
-			 ORDER BY created_at DESC`,
+			`SELECT t.*, ${TRIP_STARTED_AT} AS started_at
+			 FROM trips t
+			 WHERE t.published = 1
+			 ORDER BY ${TRIP_DATE_ORDER}`,
 		)
 		.all<Trip>();
 	return results ?? [];
@@ -24,9 +38,10 @@ export async function listAllTrips(db: D1Database): Promise<(Trip & { stop_count
 		.prepare(
 			`SELECT t.*, (
 				SELECT COUNT(*) FROM itinerary_items i WHERE i.trip_id = t.id
-			) AS stop_count
+			) AS stop_count,
+			 ${TRIP_STARTED_AT} AS started_at
 			 FROM trips t
-			 ORDER BY t.created_at DESC`,
+			 ORDER BY ${TRIP_DATE_ORDER}`,
 		)
 		.all<Trip & { stop_count: number }>();
 	return (results ?? []).map((row) => ({

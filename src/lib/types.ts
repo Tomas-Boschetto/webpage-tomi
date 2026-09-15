@@ -75,6 +75,8 @@ export interface Trip {
 	published: number;
 	created_at: string;
 	updated_at: string;
+	/** Earliest itinerary `visited_at`; used to sort trips by when they happened. */
+	started_at?: string | null;
 }
 
 export interface TripInput {

@@ -162,6 +162,10 @@ function dateKey(value: string | null | undefined): number {
 	return Number.isNaN(t) ? 0 : t;
 }
 
+function tripDateKey(trip: Trip): number {
+	return dateKey(trip.started_at) || dateKey(trip.created_at);
+}
+
 export function filterAndSortRecommendations(
 	items: Recommendation[],
 	options: {
@@ -218,14 +222,14 @@ export function sortTrips(trips: Trip[], sort: TripSort): Trip[] {
 	sorted.sort((a, b) => {
 		switch (sort) {
 			case 'oldest':
-				return dateKey(a.created_at) - dateKey(b.created_at) || a.title.localeCompare(b.title);
+				return tripDateKey(a) - tripDateKey(b) || a.title.localeCompare(b.title);
 			case 'title-asc':
 				return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
 			case 'title-desc':
 				return b.title.localeCompare(a.title, undefined, { sensitivity: 'base' });
 			case 'newest':
 			default:
-				return dateKey(b.created_at) - dateKey(a.created_at) || a.title.localeCompare(b.title);
+				return tripDateKey(b) - tripDateKey(a) || a.title.localeCompare(b.title);
 		}
 	});
 	return sorted;
