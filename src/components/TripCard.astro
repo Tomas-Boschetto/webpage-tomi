@@ -2,6 +2,7 @@
 import type { Trip } from '../lib/types';
 import { DEFAULT_LOCALE, localizedPath, type Locale } from '../i18n/locales';
 import { t } from '../i18n';
+import { isUnsplashImageUrl } from '../lib/covers';
 
 interface Props {
 	trip: Trip;
@@ -26,6 +27,16 @@ const stopLabel =
 	typeof stopCount === 'number'
 		? `${stopCount} ${t(locale, stopCount === 1 ? 'recs.stop' : 'recs.stops')}`
 		: '';
+
+const unsplashCredit =
+	hasCover &&
+	isUnsplashImageUrl(trip.image_url) &&
+	Boolean(trip.cover_credit_name?.trim());
+const photographerName = trip.cover_credit_name?.trim() || '';
+const photographerHref =
+	trip.cover_credit_profile_url?.trim() || 'https://unsplash.com/?utm_source=tomasboschetto&utm_medium=referral';
+const unsplashHref =
+	trip.cover_credit_photo_url?.trim() || 'https://unsplash.com/?utm_source=tomasboschetto&utm_medium=referral';
 ---
 
 <article
@@ -52,6 +63,22 @@ const stopLabel =
 		<a class="rec-item__title-link" href={tripHref}>{trip.title}</a>
 	</h3>
 	{summaryTeaser && <p class="rec-item__summary">{summaryTeaser}</p>}
+	{
+		unsplashCredit && (
+			<p class="trip-card__credit">
+				{t(locale, 'recs.attr.photoBy')}{' '}
+				<a href={photographerHref} rel="noopener noreferrer" target="_blank">
+					{photographerName}
+					<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
+				</a>{' '}
+				{t(locale, 'recs.attr.on')}{' '}
+				<a href={unsplashHref} rel="noopener noreferrer" target="_blank">
+					Unsplash
+					<span class="sr-only"> {t(locale, 'footer.newTab')}</span>
+				</a>
+			</p>
+		)
+	}
 	<a class="rec-item__link" href={tripHref}>
 		{t(locale, 'trip.viewItinerary')}
 		<span class="sr-only">{t(locale, 'recs.srForTitle', { title: trip.title })}</span>

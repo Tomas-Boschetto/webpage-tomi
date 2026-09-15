@@ -781,6 +781,18 @@ p {
 	aspect-ratio: 3 / 2;
 }
 
+.trip-card__credit {
+	margin: 0.35rem 0 0;
+	font-family: var(--font-ui);
+	font-size: 0.78rem;
+	line-height: 1.35;
+	color: var(--muted);
+}
+
+.trip-card__credit a {
+	color: var(--accent-soft);
+}
+
 .rec-item__summary {
 	color: var(--muted);
 	margin: 0.45rem 0 0;

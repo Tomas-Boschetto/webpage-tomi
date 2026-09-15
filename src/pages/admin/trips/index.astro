@@ -445,11 +445,17 @@ const countries = authorized
 				const title = escapeHtml(trip?.title || '');
 				const summary = escapeHtml(trip?.summary || '');
 				const image = escapeHtml(trip?.image_url || '');
+				const creditName = escapeHtml(trip?.cover_credit_name || '');
+				const creditProfile = escapeHtml(trip?.cover_credit_profile_url || '');
+				const creditPhoto = escapeHtml(trip?.cover_credit_photo_url || '');
 				const published = !trip || trip.published === 1;
 				const canPickStopCover = mode === 'edit' && Boolean(id);
 				return `
 					<form class="form admin-entry-form" data-mode="${mode}">
 						<input type="hidden" name="id" value="${escapeHtml(id)}" />
+						<input type="hidden" name="cover_credit_name" value="${creditName}" data-cover-credit-name />
+						<input type="hidden" name="cover_credit_profile_url" value="${creditProfile}" data-cover-credit-profile />
+						<input type="hidden" name="cover_credit_photo_url" value="${creditPhoto}" data-cover-credit-photo />
 						<label>
 							Trip title
 							<input type="text" name="title" required maxlength="200" placeholder="Lisbon" value="${title}" />
@@ -462,6 +468,7 @@ const countries = authorized
 							Cover image URL
 							<input type="text" name="image_url" maxlength="500" placeholder="https://… or /media/…" value="${image}" data-cover-url />
 						</label>
+						<p class="admin-map-picker__hint">Unsplash covers are hotlinked (not uploaded). Fetch records use + photographer credit for the public site.</p>
 						<div class="admin-cover-tools">
 							<button class="btn btn--ghost" type="button" data-action="fetch-cover">Fetch photo (Unsplash)</button>
 							<p class="form__status" data-cover-status role="status" aria-live="polite"></p>
@@ -656,6 +663,9 @@ const countries = authorized
 					title: String(data.get('title') || ''),
 					summary: String(data.get('summary') || ''),
 					image_url: String(data.get('image_url') || '') || null,
+					cover_credit_name: String(data.get('cover_credit_name') || '') || null,
+					cover_credit_profile_url: String(data.get('cover_credit_profile_url') || '') || null,
+					cover_credit_photo_url: String(data.get('cover_credit_photo_url') || '') || null,
 					published: form.querySelector('[name="published"]')?.checked === true,
 				};
 			}
@@ -736,6 +746,27 @@ const countries = authorized
 					coverStatus.textContent = message;
 				}
 
+				/**
+				 * @param {HTMLFormElement | null | undefined} f
+				 * @param {{ credit_name?: string, credit_profile_url?: string, credit_photo_url?: string }} [json]
+				 */
+				function setCoverCredit(f, json) {
+					if (!(f instanceof HTMLFormElement)) return;
+					const name = f.querySelector('[data-cover-credit-name]');
+					const profile = f.querySelector('[data-cover-credit-profile]');
+					const photo = f.querySelector('[data-cover-credit-photo]');
+					if (name instanceof HTMLInputElement) name.value = String(json?.credit_name || '');
+					if (profile instanceof HTMLInputElement) profile.value = String(json?.credit_profile_url || '');
+					if (photo instanceof HTMLInputElement) photo.value = String(json?.credit_photo_url || '');
+				}
+
+				/**
+				 * @param {HTMLFormElement | null | undefined} f
+				 */
+				function clearCoverCredit(f) {
+					setCoverCredit(f, {});
+				}
+
 				function syncCoverPreview(url) {
 					if (!(coverPreview instanceof HTMLImageElement)) return;
 					const next = String(url || '').trim();
@@ -786,6 +817,7 @@ const countries = authorized
 							btn.addEventListener('click', () => {
 								const url = btn.getAttribute('data-stop-cover-url') || '';
 								if (coverInput instanceof HTMLInputElement) coverInput.value = url;
+								clearCoverCredit(form);
 								syncCoverPreview(url);
 								markStopCoverSelection(url);
 								setCoverStatus(`Using photo from “${btn.getAttribute('title') || 'stop'}”. Save the trip to keep this cover.`);
@@ -804,6 +836,10 @@ const countries = authorized
 					const value = coverInput instanceof HTMLInputElement ? coverInput.value : '';
 					syncCoverPreview(value);
 					markStopCoverSelection(value);
+					// Manual URL / stop photo: clear Unsplash credit unless still an Unsplash CDN URL with existing credit.
+					if (!/images\.unsplash\.com/i.test(value)) {
+						clearCoverCredit(form);
+					}
 				});
 
 				form?.querySelector('[data-action="fetch-cover"]')?.addEventListener('click', async () => {
@@ -823,9 +859,12 @@ const countries = authorized
 					if (coverInput instanceof HTMLInputElement) {
 						coverInput.value = json.image_url;
 					}
+					setCoverCredit(form, json);
 					syncCoverPreview(json.image_url);
 					markStopCoverSelection(json.image_url);
-					setCoverStatus(`Matched “${json.matched_title}”. Save the trip to keep this cover.`);
+					setCoverStatus(
+						`Matched “${json.matched_title}”. ${json.attribution || ''} Save the trip to keep this cover.`,
+					);
 				});
 
 				form?.querySelector('[data-action="cancel"]')?.addEventListener('click', onCancel);

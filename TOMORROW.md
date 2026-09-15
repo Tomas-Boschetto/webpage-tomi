@@ -5,7 +5,7 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 
 ## Carry over (finish / verify)
 
-- [ ] **Unsplash** — when the app is approved, set `UNSPLASH_ACCESS_KEY` in `.dev.vars` and production (`npx wrangler secret put UNSPLASH_ACCESS_KEY`), then test **Fetch photo (Unsplash)** on `/admin/trips`
+- [x] **Unsplash** — `UNSPLASH_ACCESS_KEY` in `.dev.vars` + production; Fetch photo hotlinks CDN URLs, triggers download endpoint, stores photographer credit; disclaimer updated
 - [ ] **Trip covers** — add/adjust covers on live trips (paste URL until Unsplash works; Fetch after key is live)
 - [ ] **Stop photos** — upload at least one photo on a published stop; confirm it shows on `/trips/[id]` and loads from `/media/...`
 - [ ] **Travel tab** — sanity-check list + map split and country hover filter on desktop and phone

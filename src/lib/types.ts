@@ -68,6 +68,10 @@ export interface Trip {
 	title: string;
 	summary: string;
 	image_url: string | null;
+	/** Unsplash photographer name when cover is hotlinked from Unsplash. */
+	cover_credit_name: string | null;
+	cover_credit_profile_url: string | null;
+	cover_credit_photo_url: string | null;
 	published: number;
 	created_at: string;
 	updated_at: string;
@@ -77,6 +81,9 @@ export interface TripInput {
 	title: string;
 	summary: string;
 	image_url?: string | null;
+	cover_credit_name?: string | null;
+	cover_credit_profile_url?: string | null;
+	cover_credit_photo_url?: string | null;
 	published?: boolean;
 }
 

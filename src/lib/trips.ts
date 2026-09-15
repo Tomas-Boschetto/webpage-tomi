@@ -76,9 +76,22 @@ export async function createTrip(db: D1Database, input: TripInput): Promise<Trip
 
 	await db
 		.prepare(
-			`INSERT INTO trips (id, title, summary, image_url, published) VALUES (?, ?, ?, ?, ?)`,
+			`INSERT INTO trips (
+				id, title, summary, image_url,
+				cover_credit_name, cover_credit_profile_url, cover_credit_photo_url,
+				published
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		)
-		.bind(id, input.title.trim(), input.summary.trim(), emptyToNull(input.image_url), published)
+		.bind(
+			id,
+			input.title.trim(),
+			input.summary.trim(),
+			emptyToNull(input.image_url),
+			emptyToNull(input.cover_credit_name),
+			emptyToNull(input.cover_credit_profile_url),
+			emptyToNull(input.cover_credit_photo_url),
+			published,
+		)
 		.run();
 
 	const row = await getTripById(db, id);
@@ -97,14 +110,37 @@ export async function updateTrip(
 	const published = input.published === false ? 0 : 1;
 	const imageUrl =
 		input.image_url !== undefined ? emptyToNull(input.image_url) : existing.image_url;
+	const creditName =
+		input.cover_credit_name !== undefined
+			? emptyToNull(input.cover_credit_name)
+			: existing.cover_credit_name;
+	const creditProfile =
+		input.cover_credit_profile_url !== undefined
+			? emptyToNull(input.cover_credit_profile_url)
+			: existing.cover_credit_profile_url;
+	const creditPhoto =
+		input.cover_credit_photo_url !== undefined
+			? emptyToNull(input.cover_credit_photo_url)
+			: existing.cover_credit_photo_url;
 
 	await db
 		.prepare(
 			`UPDATE trips
-			 SET title = ?, summary = ?, image_url = ?, published = ?, updated_at = datetime('now')
+			 SET title = ?, summary = ?, image_url = ?,
+			     cover_credit_name = ?, cover_credit_profile_url = ?, cover_credit_photo_url = ?,
+			     published = ?, updated_at = datetime('now')
 			 WHERE id = ?`,
 		)
-		.bind(input.title.trim(), input.summary.trim(), imageUrl, published, id)
+		.bind(
+			input.title.trim(),
+			input.summary.trim(),
+			imageUrl,
+			creditName,
+			creditProfile,
+			creditPhoto,
+			published,
+			id,
+		)
 		.run();
 
 	return getTripById(db, id);
@@ -270,6 +306,21 @@ export async function deleteItineraryItem(
 	return existing;
 }
 
+function parseOptionalUrlField(
+	value: unknown,
+	field: string,
+	maxLen: number,
+): string | null | undefined | { error: string } {
+	if (value === undefined) return undefined;
+	if (value === null || value === '') return null;
+	if (typeof value !== 'string') return { error: `${field} must be a string` };
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	if (trimmed.length > maxLen) return { error: `${field} max ${maxLen} chars` };
+	if (!isSafeHttpUrl(trimmed)) return { error: `${field} must be an http(s) URL` };
+	return trimmed;
+}
+
 export function parseTripInput(body: unknown): TripInput | { error: string } {
 	if (!body || typeof body !== 'object') {
 		return { error: 'Invalid JSON body' };
@@ -300,10 +351,43 @@ export function parseTripInput(body: unknown): TripInput | { error: string } {
 		imageUrl = null;
 	}
 
+	let creditName: string | null | undefined;
+	if (data.cover_credit_name !== undefined) {
+		if (data.cover_credit_name === null || data.cover_credit_name === '') {
+			creditName = null;
+		} else if (typeof data.cover_credit_name !== 'string') {
+			return { error: 'cover_credit_name must be a string' };
+		} else {
+			const n = data.cover_credit_name.trim();
+			if (n.length > 200) return { error: 'cover_credit_name max 200 chars' };
+			creditName = n || null;
+		}
+	}
+
+	const creditProfile = parseOptionalUrlField(
+		data.cover_credit_profile_url,
+		'cover_credit_profile_url',
+		500,
+	);
+	if (creditProfile && typeof creditProfile === 'object' && 'error' in creditProfile) {
+		return creditProfile;
+	}
+	const creditPhoto = parseOptionalUrlField(
+		data.cover_credit_photo_url,
+		'cover_credit_photo_url',
+		500,
+	);
+	if (creditPhoto && typeof creditPhoto === 'object' && 'error' in creditPhoto) {
+		return creditPhoto;
+	}
+
 	return {
 		title,
 		summary,
 		image_url: imageUrl,
+		cover_credit_name: creditName,
+		cover_credit_profile_url: creditProfile as string | null | undefined,
+		cover_credit_photo_url: creditPhoto as string | null | undefined,
 		published: published === false || published === 0 ? false : true,
 	};
 }

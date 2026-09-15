@@ -119,9 +119,11 @@ Book data and covers use Open Library (no API key). Lookup also fills Wikipedia,
 ## 8. Unsplash (trip covers)
 
 1. Create an app at [unsplash.com/oauth/applications](https://unsplash.com/oauth/applications)
-2. Copy the **Access Key**
+2. Copy the **Access Key** (not the Secret Key)
 3. Set `UNSPLASH_ACCESS_KEY` as a secret (and in `.dev.vars` locally)
 4. In `/admin/trips`, edit a trip and use **Fetch photo (Unsplash)**
+
+Trip covers from Unsplash are **hotlinked** from `images.unsplash.com` (not stored in R2). Choosing a cover triggers Unsplash’s download endpoint and stores photographer credit links for the public travel list. Your own stop photo uploads remain in R2 under `/media/…`.
 
 ## 8b. Google Places (admin stop search)
 

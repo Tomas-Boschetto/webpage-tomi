@@ -5,12 +5,31 @@ export interface CoverLookupResult {
 	source: CoverSource;
 	attribution: string;
 	matched_title: string;
+	/** Photographer display name (Unsplash). */
+	credit_name?: string | null;
+	/** Photographer Unsplash profile URL with referral params. */
+	credit_profile_url?: string | null;
+	/** Photo page on Unsplash with referral params. */
+	credit_photo_url?: string | null;
 }
 
 const TMDB_ATTRIBUTION =
 	'This product uses the TMDB API but is not endorsed or certified by TMDB.';
 const OPEN_LIBRARY_ATTRIBUTION = 'Cover from Open Library.';
-const UNSPLASH_ATTRIBUTION = 'Photos from Unsplash.';
+
+/** utm_source for Unsplash API attribution / referral links */
+export const UNSPLASH_UTM_SOURCE = 'tomasboschetto';
+
+function withUnsplashReferral(url: string): string {
+	try {
+		const u = new URL(url);
+		u.searchParams.set('utm_source', UNSPLASH_UTM_SOURCE);
+		u.searchParams.set('utm_medium', 'referral');
+		return u.toString();
+	} catch {
+		return url;
+	}
+}
 
 function yearFromDate(value?: string | null): string | undefined {
 	if (!value) return undefined;
@@ -126,6 +145,29 @@ export async function lookupBookCover(
 	return { error: 'No Open Library cover found for that title.' };
 }
 
+/**
+ * Unsplash API guideline: when a photo is used, ping `links.download_location`.
+ * Does not download the file; it records the use event.
+ */
+export async function triggerUnsplashDownload(
+	downloadLocation: string,
+	accessKey: string,
+): Promise<void> {
+	const url = downloadLocation.trim();
+	const key = accessKey.trim();
+	if (!url || !key) return;
+	try {
+		await fetch(url, {
+			headers: {
+				Accept: 'application/json',
+				Authorization: `Client-ID ${key}`,
+			},
+		});
+	} catch {
+		/* non-fatal — cover still usable */
+	}
+}
+
 export async function lookupTripCover(
 	query: string,
 	accessKey: string,
@@ -160,6 +202,7 @@ export async function lookupTripCover(
 			alt_description?: string | null;
 			description?: string | null;
 			urls?: { regular?: string; small?: string };
+			links?: { html?: string; download_location?: string };
 			user?: { name?: string; links?: { html?: string } };
 		}>;
 	};
@@ -170,14 +213,29 @@ export async function lookupTripCover(
 		return { error: 'No Unsplash photo found for that search.' };
 	}
 
-	const photographer = photo.user?.name?.trim() || 'Unsplash';
-	const attribution = `Photo by ${photographer} on Unsplash. ${UNSPLASH_ATTRIBUTION}`;
+	const photographer = photo.user?.name?.trim() || 'a photographer';
+	const profileUrl = photo.user?.links?.html
+		? withUnsplashReferral(photo.user.links.html)
+		: withUnsplashReferral('https://unsplash.com');
+	const photoPageUrl = photo.links?.html
+		? withUnsplashReferral(photo.links.html)
+		: withUnsplashReferral('https://unsplash.com');
+
+	// Using this photo as a trip cover candidate — record the download event.
+	if (photo.links?.download_location) {
+		await triggerUnsplashDownload(photo.links.download_location, accessKey);
+	}
+
+	const attribution = `Photo by ${photographer} on Unsplash`;
 
 	return {
 		image_url: imageUrl,
 		source: 'unsplash',
 		attribution,
 		matched_title: photo.alt_description || photo.description || q,
+		credit_name: photographer,
+		credit_profile_url: profileUrl,
+		credit_photo_url: photoPageUrl,
 	};
 }
 
@@ -187,4 +245,8 @@ export function coverSourceFromUrl(url: string | null | undefined): CoverSource 
 	if (url.includes('covers.openlibrary.org') || url.includes('openlibrary.org')) return 'openlibrary';
 	if (url.includes('images.unsplash.com') || url.includes('unsplash.com')) return 'unsplash';
 	return null;
+}
+
+export function isUnsplashImageUrl(url: string | null | undefined): boolean {
+	return coverSourceFromUrl(url) === 'unsplash';
 }
