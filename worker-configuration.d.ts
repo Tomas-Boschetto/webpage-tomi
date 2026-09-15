@@ -16,6 +16,7 @@ interface __BaseEnv_Env {
 	CONTACT_TO_EMAIL: string;
 	TMDB_API_KEY: string;
 	UNSPLASH_ACCESS_KEY: string;
+	CARTO_API_KEY: string;
 }
 declare namespace Cloudflare {
 	interface Env extends __BaseEnv_Env {}
@@ -25,7 +26,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "SITE_NAME" | "LINKEDIN_URL" | "ADMIN_DEV_BYPASS" | "TURNSTILE_SITE_KEY" | "TURNSTILE_SECRET_KEY" | "TURNSTILE_HOSTNAMES" | "RESEND_API_KEY" | "CONTACT_FROM_EMAIL" | "CONTACT_TO_EMAIL" | "TMDB_API_KEY" | "UNSPLASH_ACCESS_KEY">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "SITE_NAME" | "LINKEDIN_URL" | "ADMIN_DEV_BYPASS" | "TURNSTILE_SITE_KEY" | "TURNSTILE_SECRET_KEY" | "TURNSTILE_HOSTNAMES" | "RESEND_API_KEY" | "CONTACT_FROM_EMAIL" | "CONTACT_TO_EMAIL" | "TMDB_API_KEY" | "UNSPLASH_ACCESS_KEY" | "CARTO_API_KEY">> {}
 }
 
 // Begin runtime types

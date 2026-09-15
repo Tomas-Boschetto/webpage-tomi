@@ -27,3 +27,7 @@ GOOGLE_MAPS_API_KEY=
 
 # Unsplash (trip cover lookup in /admin/trips — https://unsplash.com/oauth/applications)
 UNSPLASH_ACCESS_KEY=
+
+# CARTO basemaps (trip maps — https://carto.com/basemaps/apikey/)
+# Appears in public tile URLs; restrict the key to your domains in the CARTO dashboard.
+CARTO_API_KEY=

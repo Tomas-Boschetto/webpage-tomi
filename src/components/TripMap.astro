@@ -1,7 +1,8 @@
 ---
 import type { ItineraryItem, TransportMode } from '../lib/types';
 import { TRANSPORT_MODE_MAP_STYLE, isTransportMode } from '../lib/types';
-import { MAP_TILE_ATTRIBUTION, MAP_TILES } from '../lib/map-tiles';
+import { mapTiles } from '../lib/map-tiles';
+import { env } from 'cloudflare:workers';
 import { DEFAULT_LOCALE, type Locale } from '../i18n/locales';
 import { t, placeTypeLabel, transportModeLabel } from '../i18n';
 
@@ -52,6 +53,7 @@ const googleMapsDirUrl =
 
 const routeSummary = mappable.map((i) => i.place_name).join(' → ');
 const routeSummaryId = 'trip-route-summary';
+const tiles = mapTiles(env.CARTO_API_KEY);
 ---
 
 {
@@ -89,8 +91,8 @@ const routeSummaryId = 'trip-route-summary';
 				aria-describedby={routeSummaryId}
 				data-stops={JSON.stringify(payload)}
 				data-styles={JSON.stringify(styleByMode)}
-				data-tiles={JSON.stringify(MAP_TILES)}
-				data-tiles-attr={MAP_TILE_ATTRIBUTION}
+				data-tiles={JSON.stringify({ dark: tiles.dark, light: tiles.light })}
+				data-tiles-attr={tiles.attribution}
 				data-trip-title={tripTitle}
 				data-arrived-by={t(locale, 'trip.arrivedBy', { mode: '{mode}' })}
 				data-view-itinerary={t(locale, 'trip.viewInItinerary')}
@@ -206,12 +208,13 @@ const routeSummaryId = 'trip-route-summary';
 						if (tileLayer) map.removeLayer(tileLayer);
 						var group = window.L.layerGroup();
 						var maxZoom = spec.maxZoom || 16;
-						window.L.tileLayer(spec.url, {
-							attribution: tilesAttr,
-							maxZoom: maxZoom,
-						}).addTo(group);
+						var layerOpts = { attribution: tilesAttr, maxZoom: maxZoom };
+						if (spec.subdomains) layerOpts.subdomains = spec.subdomains;
+						window.L.tileLayer(spec.url, layerOpts).addTo(group);
 						if (spec.labels) {
-							window.L.tileLayer(spec.labels, { maxZoom: maxZoom }).addTo(group);
+							var labelOpts = { maxZoom: maxZoom };
+							if (spec.subdomains) labelOpts.subdomains = spec.subdomains;
+							window.L.tileLayer(spec.labels, labelOpts).addTo(group);
 						}
 						tileLayer = group.addTo(map);
 						return spec.casing || '#0a1412';

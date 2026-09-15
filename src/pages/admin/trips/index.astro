@@ -5,6 +5,7 @@ import { env } from 'cloudflare:workers';
 import { isAdminAuthorized } from '../../../lib/auth';
 import { listCountriesFromStops } from '../../../lib/countries';
 import { PLACE_TYPES, PLACE_TYPE_LABELS, TRANSPORT_MODES, TRANSPORT_MODE_LABELS } from '../../../lib/types';
+import { mapTiles } from '../../../lib/map-tiles';
 
 export const prerender = false;
 
@@ -21,6 +22,7 @@ const transportModeOptions = TRANSPORT_MODES.map((mode) => ({
 const countries = authorized
 	? await listCountriesFromStops(env.DB, { publishedOnly: false })
 	: [];
+const tiles = mapTiles(env.CARTO_API_KEY);
 ---
 
 <BaseLayout title="Admin · Trips" description="Manage travel trips and itineraries." robots="noindex, nofollow">
@@ -59,6 +61,8 @@ const countries = authorized
 					data-preselect={preselectId}
 					data-place-types={JSON.stringify(placeTypeOptions)}
 					data-transport-modes={JSON.stringify(transportModeOptions)}
+					data-map-tiles={JSON.stringify({ dark: tiles.dark, light: tiles.light })}
+					data-map-tiles-attr={tiles.attribution}
 				>
 					<section class="admin-add admin-add--leading">
 						<button class="btn btn--primary" type="button" id="add-trip-toggle" aria-expanded="false">
@@ -107,20 +111,8 @@ const countries = authorized
 			/** @type {Promise<void> | null} */
 			let leafletPromise = null;
 
-			const MAP_TILES = {
-				dark: {
-					url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-					labels:
-						'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-				},
-				light: {
-					url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-					labels:
-						'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-				},
-			};
-			const MAP_TILE_ATTRIBUTION =
-				'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, TomTom, Garmin, FAO, NOAA, USGS';
+			const MAP_TILES = JSON.parse(app?.dataset.mapTiles || '{}');
+			const MAP_TILE_ATTRIBUTION = app?.dataset.mapTilesAttr || '';
 
 			function addThemedTiles(map) {
 				let layer;
@@ -129,14 +121,20 @@ const countries = authorized
 						!window.matchMedia ||
 						window.matchMedia('(prefers-color-scheme: dark)').matches;
 					const spec = dark ? MAP_TILES.dark : MAP_TILES.light;
+					if (!spec?.url) return;
 					if (layer) map.removeLayer(layer);
 					const group = window.L.layerGroup();
-					window.L.tileLayer(spec.url, {
+					const maxZoom = spec.maxZoom || 16;
+					const layerOpts = {
 						attribution: MAP_TILE_ATTRIBUTION,
-						maxZoom: 16,
-					}).addTo(group);
+						maxZoom,
+					};
+					if (spec.subdomains) layerOpts.subdomains = spec.subdomains;
+					window.L.tileLayer(spec.url, layerOpts).addTo(group);
 					if (spec.labels) {
-						window.L.tileLayer(spec.labels, { maxZoom: 16 }).addTo(group);
+						const labelOpts = { maxZoom };
+						if (spec.subdomains) labelOpts.subdomains = spec.subdomains;
+						window.L.tileLayer(spec.labels, labelOpts).addTo(group);
 					}
 					layer = group.addTo(map);
 				}

@@ -49,6 +49,7 @@ In the Worker/Pages project → **Settings → Variables and Secrets**, set:
 | `OMDB_API_KEY` | secret (optional) | From [OMDb](https://www.omdbapi.com/apikey.aspx) — IMDb community ratings on movie lookup |
 | `GOOGLE_MAPS_API_KEY` | secret (optional) | Google Maps Platform — Places API (New) Text Search for admin stop lookup; falls back to Nominatim if unset |
 | `UNSPLASH_ACCESS_KEY` | **secret** | From [Unsplash developers](https://unsplash.com/oauth/applications) — trip cover lookup |
+| `CARTO_API_KEY` | **secret** | From [CARTO basemaps](https://carto.com/basemaps/apikey/) — Dark Matter / Positron tiles on trip maps. The key still appears in tile URLs in the browser; restrict it to this site in the CARTO dashboard. Falls back to Esri if unset. |
 
 Do **not** set `ADMIN_DEV_BYPASS=true` in production.
 
