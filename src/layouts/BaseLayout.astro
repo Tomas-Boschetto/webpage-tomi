@@ -1,7 +1,7 @@
 ---
 import '../styles/global.css';
 import { env } from 'cloudflare:workers';
-import { absoluteUrl, getSiteUrl } from '../lib/site';
+import { absoluteUrl, getSiteUrl, localizedCanonicalPath } from '../lib/site';
 import {
 	DEFAULT_LOCALE,
 	LOCALES,
@@ -44,10 +44,7 @@ const pageTitle = title === siteName ? siteName : `${title} · ${siteName}`;
 const path = Astro.url.pathname;
 const pathNoLocale = stripLocalePrefix(path);
 const search = Astro.url.search;
-const canonical = absoluteUrl(
-	siteUrl,
-	path === '/' || pathNoLocale === '/' ? localizedPath(locale, '/') : localizedPath(locale, pathNoLocale),
-);
+const canonical = absoluteUrl(siteUrl, localizedCanonicalPath(locale, path, Astro.url.searchParams));
 const ogImage = absoluteUrl(siteUrl, image);
 const year = new Date().getFullYear();
 const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
@@ -83,11 +80,7 @@ const isContact = pathNoLocale.startsWith('/contact');
 				<link
 					rel="alternate"
 					hreflang={loc}
-					href={absoluteUrl(
-						siteUrl,
-						(pathNoLocale === '/' ? localizedPath(loc, '/') : localizedPath(loc, pathNoLocale)) +
-							search,
-					)}
+					href={absoluteUrl(siteUrl, localizedCanonicalPath(loc, path, Astro.url.searchParams))}
 				/>
 			))
 		}
@@ -96,7 +89,7 @@ const isContact = pathNoLocale.startsWith('/contact');
 			hreflang="x-default"
 			href={absoluteUrl(
 				siteUrl,
-				(pathNoLocale === '/' ? '/' : pathNoLocale) + search,
+				localizedCanonicalPath(DEFAULT_LOCALE, path, Astro.url.searchParams),
 			)}
 		/>
 

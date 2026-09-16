@@ -43,7 +43,7 @@ const activeType: RecommendationType | undefined = isRecommendationType(typePara
 if (!showTravel && !activeType) {
 	const next = new URL(Astro.url);
 	next.searchParams.set('type', 'movie');
-	return Astro.redirect(`${next.pathname}?${next.searchParams.toString()}`);
+	return Astro.redirect(`${next.pathname}?${next.searchParams.toString()}`, 301);
 }
 
 const genreParam = Astro.url.searchParams.get('genre')?.trim() || '';
