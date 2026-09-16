@@ -16,8 +16,10 @@ export async function listPublished(
 				`SELECT * FROM recommendations
 				 WHERE published = 1 AND type = ?
 				 ORDER BY
-				 	CASE WHEN experienced_at IS NULL OR experienced_at = '' THEN 1 ELSE 0 END,
-				 	experienced_at DESC,
+				 	CASE
+				 		WHEN type = 'movie' THEN COALESCE(original_published_at, edition_published_at)
+				 		ELSE experienced_at
+				 	END DESC,
 				 	created_at DESC`,
 			)
 			.bind(type)
@@ -30,8 +32,10 @@ export async function listPublished(
 			`SELECT * FROM recommendations
 			 WHERE published = 1 AND type IN ('movie', 'book')
 			 ORDER BY
-			 	CASE WHEN experienced_at IS NULL OR experienced_at = '' THEN 1 ELSE 0 END,
-			 	experienced_at DESC,
+			 	CASE
+			 		WHEN type = 'movie' THEN COALESCE(original_published_at, edition_published_at)
+			 		ELSE experienced_at
+			 	END DESC,
 			 	created_at DESC`,
 		)
 		.all<Recommendation>();
@@ -195,7 +199,7 @@ export function parseRecommendationInput(body: unknown): RecommendationInput | {
 	const parsedRating = parseOptionalRating(rating);
 	if ('error' in parsedRating) return parsedRating;
 
-	const parsedDate = parseExperiencedAt(experienced_at, type === 'book');
+	const parsedDate = parseExperiencedAt(experienced_at, type === 'book', type === 'book');
 	if ('error' in parsedDate) return parsedDate;
 
 	const parsedEdition = parseOptionalEditionDate(edition_published_at);
@@ -271,9 +275,11 @@ export function parseRecommendationInput(body: unknown): RecommendationInput | {
 function parseExperiencedAt(
 	value: unknown,
 	monthOnly: boolean,
-): { value: string } | { error: string } {
+	required: boolean,
+): { value: string | null } | { error: string } {
 	if (value == null || value === '') {
-		return { error: 'experienced_at (date watched/read) is required' };
+		if (required) return { error: 'experienced_at (month read) is required' };
+		return { value: null };
 	}
 	if (typeof value !== 'string') {
 		return { error: 'experienced_at must be a date string' };

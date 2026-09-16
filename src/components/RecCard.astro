@@ -64,7 +64,7 @@ const blurbShort = blurb.length > 220 ? `${blurb.slice(0, 217).trimEnd()}…` : 
 			</p>
 		)
 	}
-	{whenText && (
+	{item.type === 'book' && whenText && (
 		<p class="rec-item__when">
 			<strong>{whenLabel}:</strong> {whenText}
 		</p>

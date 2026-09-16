@@ -216,10 +216,14 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 							<textarea name="commentary" maxlength="4000" rows="4" data-field="commentary" placeholder="Your personal take — required for a good recommendation">${commentary}</textarea>
 						</label>
 						<p class="admin-cover__hint">Commentary is your voice. It shows on the list and detail pages; awards only appear on the detail page.</p>
-						<label>
-							${isBook ? 'Month read' : 'Date watched'}
-							<input type="${isBook ? 'month' : 'date'}" name="experienced_at" required value="${experienced}" />
-						</label>
+						${
+							isBook
+								? `<label>
+							Month read
+							<input type="month" name="experienced_at" required value="${experienced}" />
+						</label>`
+								: ''
+						}
 						<label>
 							${isBook ? 'Edition published (optional)' : 'Release date (optional)'}
 							<input type="date" name="edition_published_at" value="${edition}" data-field="edition_published_at" />
@@ -1024,7 +1028,7 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 									</p>`
 								: ''
 						}
-						${whenText ? `<p class="rec-item__when"><strong>${whenLabel}:</strong> ${escapeHtml(whenText)}</p>` : ''}
+						${formType === 'book' && whenText ? `<p class="rec-item__when"><strong>${whenLabel}:</strong> ${escapeHtml(whenText)}</p>` : ''}
 						${
 							item.director
 								? `<p class="rec-item__when"><strong>${creatorLabel}:</strong> ${escapeHtml(item.director)}</p>`

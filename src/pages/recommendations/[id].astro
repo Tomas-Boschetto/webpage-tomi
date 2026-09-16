@@ -181,7 +181,7 @@ const extraPrizes = prizeRows(extraGroups);
 					}
 
 					<ul class="rec-item__details">
-						{whenText && (
+						{item.type === 'book' && whenText && (
 							<li>
 								<strong>{whenLabel}:</strong> {whenText}
 							</li>

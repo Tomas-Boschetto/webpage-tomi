@@ -162,6 +162,14 @@ function dateKey(value: string | null | undefined): number {
 	return Number.isNaN(t) ? 0 : t;
 }
 
+/** Movies sort by release; books sort by month read. */
+function recDateKey(item: Recommendation): number {
+	if (item.type === 'movie') {
+		return dateKey(item.original_published_at) || dateKey(item.edition_published_at);
+	}
+	return dateKey(item.experienced_at);
+}
+
 function tripDateKey(trip: Trip): number {
 	return dateKey(trip.started_at) || dateKey(trip.created_at);
 }
@@ -200,7 +208,7 @@ export function filterAndSortRecommendations(
 	sorted.sort((a, b) => {
 		switch (sort) {
 			case 'oldest':
-				return dateKey(a.experienced_at) - dateKey(b.experienced_at) || a.title.localeCompare(b.title);
+				return recDateKey(a) - recDateKey(b) || a.title.localeCompare(b.title);
 			case 'rating-desc':
 				return (b.rating ?? -1) - (a.rating ?? -1) || a.title.localeCompare(b.title);
 			case 'rating-asc':
@@ -211,7 +219,7 @@ export function filterAndSortRecommendations(
 				return b.title.localeCompare(a.title, undefined, { sensitivity: 'base' });
 			case 'newest':
 			default:
-				return dateKey(b.experienced_at) - dateKey(a.experienced_at) || a.title.localeCompare(b.title);
+				return recDateKey(b) - recDateKey(a) || a.title.localeCompare(b.title);
 		}
 	});
 	return sorted;
