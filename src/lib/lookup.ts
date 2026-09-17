@@ -1059,7 +1059,7 @@ async function queryWikidataAwards(itemMatch: string): Promise<string | null> {
 			OPTIONAL { ?award wdt:P1027 ?conferred . }
 			SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
 		}
-		LIMIT 24
+		LIMIT 80
 	`;
 
 	try {
