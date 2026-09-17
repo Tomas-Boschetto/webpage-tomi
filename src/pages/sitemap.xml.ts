@@ -54,9 +54,9 @@ export const GET: APIRoute = async () => {
 	const staticPages = [
 		{ path: '/', priority: '1.0', changefreq: 'weekly', search: '' },
 		{ path: '/about', priority: '0.8', changefreq: 'monthly', search: '' },
-		{ path: '/recommendations', priority: '0.9', changefreq: 'daily', search: '?type=movie' },
-		{ path: '/recommendations', priority: '0.9', changefreq: 'daily', search: '?type=book' },
 		{ path: '/recommendations', priority: '0.9', changefreq: 'daily', search: '?type=travel' },
+		{ path: '/recommendations', priority: '0.9', changefreq: 'daily', search: '?type=book' },
+		{ path: '/recommendations', priority: '0.9', changefreq: 'daily', search: '?type=movie' },
 		{ path: '/contact', priority: '0.5', changefreq: 'yearly', search: '' },
 		{ path: '/disclaimer', priority: '0.3', changefreq: 'yearly', search: '' },
 	];

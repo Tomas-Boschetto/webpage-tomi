@@ -1,5 +1,32 @@
 import type { VisitedCountry } from './types';
 
+export interface TripCountry {
+	code: string;
+	name: string;
+}
+
+export function flagCdnUrl(code: string, width = 40): string {
+	return `https://flagcdn.com/w${width}/${code.trim().toLowerCase()}.png`;
+}
+
+/** Unique countries from itinerary stops, in first-seen order. */
+export function uniqueTripCountries(
+	items: Array<{ country_code?: string | null; country_name?: string | null }>,
+): TripCountry[] {
+	const seen = new Set<string>();
+	const countries: TripCountry[] = [];
+	for (const item of items) {
+		const code = item.country_code?.trim().toUpperCase() || '';
+		if (!/^[A-Z]{2}$/.test(code) || seen.has(code)) continue;
+		seen.add(code);
+		countries.push({
+			code,
+			name: item.country_name?.trim() || code,
+		});
+	}
+	return countries;
+}
+
 /** Distinct countries from trip stops (for the planisphere). */
 export async function listCountriesFromStops(
 	db: D1Database,

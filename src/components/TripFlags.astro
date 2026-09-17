@@ -1,0 +1,33 @@
+---
+import { DEFAULT_LOCALE, type Locale } from '../i18n/locales';
+import { t } from '../i18n';
+import { flagCdnUrl, type TripCountry } from '../lib/countries';
+
+interface Props {
+	countries: TripCountry[];
+	locale?: Locale;
+}
+
+const locale: Locale = Astro.props.locale || DEFAULT_LOCALE;
+const { countries } = Astro.props;
+---
+
+{
+	countries.length > 0 && (
+		<ul class="trip-flags" aria-label={t(locale, 'trip.countries')}>
+			{countries.map((country) => (
+				<li>
+					<img
+						src={flagCdnUrl(country.code)}
+						alt={country.name}
+						title={country.name}
+						width="20"
+						height="15"
+						loading="lazy"
+						decoding="async"
+					/>
+				</li>
+			))}
+		</ul>
+	)
+}

@@ -51,7 +51,7 @@ const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 
 const homeHref = localizedPath(locale, '/');
 const aboutHref = localizedPath(locale, '/about');
-const recsHref = localizedPath(locale, '/recommendations') + '?type=movie';
+const recsHref = localizedPath(locale, '/recommendations') + '?type=travel';
 const contactHref = localizedPath(locale, '/contact');
 const disclaimerHref = localizedPath(locale, '/disclaimer');
 
@@ -142,26 +142,29 @@ const isContact = pathNoLocale.startsWith('/contact');
 						>{t(locale, 'nav.contact')}</a
 					>
 				</nav>
-				<nav class="lang-switch" aria-label={t(locale, 'nav.language')}>
-					{
-						LOCALES.map((loc) => {
-							const href =
-								(pathNoLocale === '/' ? localizedPath(loc, '/') : localizedPath(loc, pathNoLocale)) +
-								search;
-							return (
-								<a
-									href={href}
-									lang={loc}
-									hreflang={loc}
-									aria-current={loc === locale ? 'true' : undefined}
-									title={LOCALE_LABELS[loc]}
-								>
-									{loc.toUpperCase()}
-								</a>
-							);
-						})
-					}
-				</nav>
+				<label class="lang-switch">
+					<span class="sr-only">{t(locale, 'nav.language')}</span>
+					<select
+						class="lang-switch__select"
+						data-lang-switch
+						aria-label={t(locale, 'nav.language')}
+						onchange="window.location.assign(this.value)"
+					>
+						{
+							LOCALES.map((loc) => {
+								const href =
+									(pathNoLocale === '/'
+										? localizedPath(loc, '/')
+										: localizedPath(loc, pathNoLocale)) + search;
+								return (
+									<option value={href} selected={loc === locale} lang={loc}>
+										{LOCALE_LABELS[loc]}
+									</option>
+								);
+							})
+						}
+					</select>
+				</label>
 			</div>
 		</header>
 		<main class="site-main" id="main" tabindex="-1">
@@ -193,6 +196,12 @@ const isContact = pathNoLocale.startsWith('/contact');
 				const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 				main.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
 				history.replaceState(null, '', `${location.pathname}${location.search}#main`);
+			});
+			document.querySelector('[data-lang-switch]')?.addEventListener('change', (event) => {
+				const select = event.currentTarget;
+				if (select instanceof HTMLSelectElement && select.value) {
+					window.location.assign(select.value);
+				}
 			});
 		</script>
 	</body>

@@ -35,7 +35,7 @@ const resolvedLead =
 			? t(locale, 'planisphere.countOne')
 			: t(locale, 'planisphere.count', { n: countries.length }));
 
-const legendId = id ? `${id}-legend` : 'planisphere-legend';
+const leadId = id ? `${id}-lead` : 'planisphere-lead';
 const visitedWord = t(locale, 'planisphere.visited');
 
 function escapeXml(value: string): string {
@@ -44,10 +44,6 @@ function escapeXml(value: string): string {
 		.replace(/</g, '&lt;')
 		.replace(/>/g, '&gt;')
 		.replace(/"/g, '&quot;');
-}
-
-function flagUrl(code: string): string {
-	return `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
 }
 
 /** Mark visited countries and attach titles for hover. */
@@ -69,52 +65,15 @@ const mapHtml = highlightWorld(worldSvg, codes);
 <section class="planisphere" aria-label={t(locale, 'planisphere.aria')} id={id}>
 	<header class="planisphere__head">
 		<h2 class="planisphere__title">{title}</h2>
-		<p class="planisphere__lead" data-planisphere-lead>{resolvedLead}</p>
+		<p class="planisphere__lead" id={leadId} data-planisphere-lead>{resolvedLead}</p>
 	</header>
 	<div
 		class="planisphere__map"
 		role="img"
 		aria-label={t(locale, 'planisphere.mapAria')}
-		aria-describedby={legendId}
+		aria-describedby={leadId}
 		data-planisphere-map
 		set:html={mapHtml}
 	/>
 	<p class="planisphere__credit">{t(locale, 'planisphere.credit')}</p>
-	<ul
-		class="planisphere__legend"
-		id={legendId}
-		aria-label={t(locale, 'planisphere.legendAria')}
-		data-planisphere-legend
-	>
-		{
-			countries.map((c) => {
-				const code = c.country_code.toUpperCase();
-				return (
-					<li data-legend-code={code}>
-						<button
-							type="button"
-							class="planisphere__legend-btn"
-							data-legend-code={code}
-							aria-label={t(locale, 'planisphere.legendItem', {
-								country: c.name,
-								code,
-							})}
-						>
-							<img
-								class="planisphere__flag"
-								src={flagUrl(c.country_code)}
-								alt=""
-								width="20"
-								height="15"
-								loading="lazy"
-								decoding="async"
-							/>
-							<strong>{c.name}</strong>
-							<span class="planisphere__note"> ({code})</span>
-						</button>
-					</li>
-				);
-			})
-		}
-	</ul>
 </section>

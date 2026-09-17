@@ -8,6 +8,7 @@ export const fr: Record<MessageKey, string> = {
 	'nav.recommendations': 'Recommandations',
 	'nav.contact': 'Contact',
 	'nav.language': 'Langue',
+	'trip.countries': 'Pays visités',
 	'footer.nav': 'Pied de page',
 	'footer.tagline': 'Là-bas dans le monde, et dans les histoires',
 	'footer.linkedin': 'Suivre sur LinkedIn',

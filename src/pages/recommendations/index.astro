@@ -5,7 +5,11 @@ import TripCard from '../../components/TripCard.astro';
 import Planisphere from '../../components/Planisphere.astro';
 import { env } from 'cloudflare:workers';
 import { listPublished } from '../../lib/db';
-import { listCountriesFromPublishedStops, listPublishedTripIdsForCountry } from '../../lib/countries';
+import {
+	listCountriesFromPublishedStops,
+	listPublishedTripIdsForCountry,
+	uniqueTripCountries,
+} from '../../lib/countries';
 import {
 	extractActors,
 	extractAuthors,
@@ -24,6 +28,7 @@ import { isRecommendationType, type RecommendationType } from '../../lib/types';
 import { DEFAULT_LOCALE, localizedPath, type Locale } from '../../i18n/locales';
 import { t } from '../../i18n';
 import { localizeRecommendations, localizeTrips } from '../../lib/i18n-content';
+import { recommendationsTypeRedirect } from '../../lib/site';
 
 interface Props {
 	locale?: Locale;
@@ -33,18 +38,16 @@ export const prerender = false;
 
 const locale: Locale = Astro.props.locale || (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
 
+const recsRedirect = recommendationsTypeRedirect(Astro.url);
+if (recsRedirect) {
+	return Astro.redirect(recsRedirect, 301);
+}
+
 const typeParam = Astro.url.searchParams.get('type');
 const showTravel = typeParam === 'travel';
 const activeType: RecommendationType | undefined = isRecommendationType(typeParam)
 	? typeParam
 	: undefined;
-
-// No combined “All” view — always land on a specific section.
-if (!showTravel && !activeType) {
-	const next = new URL(Astro.url);
-	next.searchParams.set('type', 'movie');
-	return Astro.redirect(`${next.pathname}?${next.searchParams.toString()}`, 301);
-}
 
 const genreParam = Astro.url.searchParams.get('genre')?.trim() || '';
 const awardParam = Astro.url.searchParams.get('award')?.trim() || '';
@@ -92,17 +95,10 @@ const trips = sortTrips(rawTrips, tripSort);
 const tripCards = await Promise.all(
 	trips.map(async (trip) => {
 		const items = await listItineraryForTrip(env.DB, trip.id);
-		const countryCodes = [
-			...new Set(
-				items
-					.map((item) => item.country_code?.toUpperCase())
-					.filter((code): code is string => Boolean(code)),
-			),
-		];
 		return {
 			trip,
 			stopCount: items.length,
-			countryCodes,
+			countries: uniqueTripCountries(items),
 		};
 	}),
 );
@@ -113,9 +109,9 @@ function hrefForType(type: 'movie' | 'book' | 'travel') {
 }
 
 const tabs = [
-	{ label: t(locale, 'recs.movies'), href: hrefForType('movie'), current: activeType === 'movie' },
-	{ label: t(locale, 'recs.books'), href: hrefForType('book'), current: activeType === 'book' },
 	{ label: t(locale, 'recs.travel'), href: hrefForType('travel'), current: showTravel },
+	{ label: t(locale, 'recs.books'), href: hrefForType('book'), current: activeType === 'book' },
+	{ label: t(locale, 'recs.movies'), href: hrefForType('movie'), current: activeType === 'movie' },
 ];
 
 const empty = showTravel ? tripCards.length === 0 : mediaItems.length === 0;
@@ -329,11 +325,11 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 			<section class="travel-split" data-travel-split>
 				<div class="travel-split__list" data-travel-list>
 					<div class="rec-list travel-split__cards">
-						{tripCards.map(({ trip, stopCount, countryCodes }) => (
+						{tripCards.map(({ trip, stopCount, countries }) => (
 							<TripCard
 								trip={trip}
 								stopCount={stopCount}
-								countryCodes={countryCodes}
+								countries={countries}
 								locale={locale}
 							/>
 						))}
@@ -492,7 +488,6 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 		const emptyEl = split.querySelector('[data-travel-empty]');
 		const cards = Array.from(split.querySelectorAll('[data-trip-card]'));
 		const mapRoot = split.querySelector('[data-planisphere-map]');
-		const legend = split.querySelector('[data-planisphere-legend]');
 		const mapColumn = split.querySelector('.travel-split__map');
 
 		function syncListHeight() {
@@ -528,12 +523,6 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 			mapRoot?.querySelectorAll('path.country.is-visited').forEach((path) => {
 				path.classList.toggle('is-hover-filter', Boolean(normalized) && path.id === normalized);
 			});
-			legend?.querySelectorAll('[data-legend-code]').forEach((row) => {
-				row.classList.toggle(
-					'is-hover-filter',
-					Boolean(normalized) && row.getAttribute('data-legend-code') === normalized,
-				);
-			});
 		}
 
 		function clearHoverFilter() {
@@ -546,17 +535,6 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 			path.addEventListener('focus', () => applyCountryFilter(path.id));
 			path.addEventListener('blur', clearHoverFilter);
 			if (!path.hasAttribute('tabindex')) path.setAttribute('tabindex', '0');
-		});
-
-		legend?.querySelectorAll('[data-legend-code]').forEach((row) => {
-			row.addEventListener('mouseenter', () =>
-				applyCountryFilter(row.getAttribute('data-legend-code')),
-			);
-			row.addEventListener('mouseleave', clearHoverFilter);
-			row.addEventListener('focus', () =>
-				applyCountryFilter(row.getAttribute('data-legend-code')),
-			);
-			row.addEventListener('blur', clearHoverFilter);
 		});
 	}
 </script>

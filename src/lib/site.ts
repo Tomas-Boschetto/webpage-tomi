@@ -28,6 +28,17 @@ export function canonicalQuery(pathname: string, searchParams: URLSearchParams):
 	return '';
 }
 
+/** Redirect bare /recommendations (any locale) to the travel tab. */
+export function recommendationsTypeRedirect(url: URL): string | null {
+	const pathNoLocale = stripLocalePrefix(url.pathname);
+	if (pathNoLocale !== '/recommendations') return null;
+	const type = url.searchParams.get('type');
+	if (type && INDEXABLE_REC_TYPES.has(type)) return null;
+	const next = new URL(url);
+	next.searchParams.set('type', 'travel');
+	return `${next.pathname}?${next.searchParams.toString()}`;
+}
+
 /** Locale-prefixed path plus indexable query, for canonical / hreflang / og:url. */
 export function localizedCanonicalPath(
 	locale: Locale,

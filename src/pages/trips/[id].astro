@@ -4,9 +4,11 @@ import TripMap from '../../components/TripMap.astro';
 import ItineraryStops from '../../components/ItineraryStops.astro';
 import { env } from 'cloudflare:workers';
 import { getTripWithItems } from '../../lib/trips';
+import { uniqueTripCountries } from '../../lib/countries';
 import { DEFAULT_LOCALE, localizedPath, type Locale } from '../../i18n/locales';
 import { t } from '../../i18n';
 import { localizeTripWithItems } from '../../lib/i18n-content';
+import TripFlags from '../../components/TripFlags.astro';
 
 interface Props {
 	locale?: Locale;
@@ -26,6 +28,7 @@ if (!trip) {
 const travelHref = `${localizedPath(locale, '/recommendations')}?type=travel`;
 const hasMap =
 	Boolean(trip) && trip!.items.some((item) => item.lat != null && item.lng != null);
+const tripCountries = trip ? uniqueTripCountries(trip.items) : [];
 ---
 
 {
@@ -47,6 +50,7 @@ const hasMap =
 		>
 			<header class="section-head">
 				<h1>{trip.title}</h1>
+				<TripFlags countries={tripCountries} locale={locale} />
 				<p>{trip.summary}</p>
 				<p>
 					<a href={travelHref}>{t(locale, 'trip.allTrips')}</a>

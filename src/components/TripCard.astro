@@ -3,18 +3,20 @@ import type { Trip } from '../lib/types';
 import { DEFAULT_LOCALE, localizedPath, type Locale } from '../i18n/locales';
 import { t } from '../i18n';
 import { isUnsplashImageUrl } from '../lib/covers';
+import type { TripCountry } from '../lib/countries';
+import TripFlags from './TripFlags.astro';
 
 interface Props {
 	trip: Trip;
 	stopCount?: number;
-	countryCodes?: string[];
+	countries?: TripCountry[];
 	locale?: Locale;
 }
 
 const locale: Locale = Astro.props.locale || DEFAULT_LOCALE;
-const { trip, stopCount, countryCodes = [] } = Astro.props;
+const { trip, stopCount, countries = [] } = Astro.props;
 const hasCover = Boolean(trip.image_url);
-const countriesAttr = countryCodes.map((c) => c.toUpperCase()).join(',');
+const countriesAttr = countries.map((c) => c.code.toUpperCase()).join(',');
 const summaryWords = trip.summary.trim().split(/\s+/).filter(Boolean);
 const summaryTeaser =
 	summaryWords.length === 0
@@ -78,6 +80,7 @@ const unsplashHref =
 	<h3 class="rec-item__title">
 		<a class="rec-item__title-link" href={tripHref}>{trip.title}</a>
 	</h3>
+	<TripFlags countries={countries} locale={locale} />
 	{summaryTeaser && <p class="rec-item__summary">{summaryTeaser}</p>}
 	<a class="rec-item__link" href={tripHref}>
 		{t(locale, 'trip.viewItinerary')}

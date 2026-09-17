@@ -388,29 +388,30 @@ p {
 
 .lang-switch {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 0.35rem;
+	align-items: center;
 	font-family: var(--font-ui);
-	font-size: 0.75rem;
-	letter-spacing: 0.04em;
+	font-size: 0.8rem;
 }
 
-.lang-switch a {
-	color: var(--muted);
-	text-decoration: none;
-	padding: 0.2rem 0.35rem;
-	border-radius: 0.25rem;
-	border: 1px solid transparent;
-}
-
-.lang-switch a:hover,
-.lang-switch a:focus-visible {
+.lang-switch__select {
+	appearance: none;
+	font: inherit;
+	letter-spacing: 0.02em;
 	color: var(--ink);
-	border-color: var(--line);
+	background-color: var(--surface);
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%23666' d='M1.2 1.3 6 6.1l4.8-4.8 1.2 1.2L6 8.5 0 2.5z'/></svg>");
+	background-repeat: no-repeat;
+	background-position: right 0.55rem center;
+	background-size: 0.65rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 0.3rem 1.65rem 0.3rem 0.55rem;
+	cursor: pointer;
+	min-width: 7.5rem;
 }
 
-.lang-switch a[aria-current='true'] {
-	color: var(--ink);
+.lang-switch__select:hover,
+.lang-switch__select:focus-visible {
 	border-color: var(--line-strong);
 }
 
@@ -1125,6 +1126,35 @@ p {
 	margin: 0;
 }
 
+.trip-flags {
+	list-style: none;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	margin: 0.4rem 0 0;
+	padding: 0;
+}
+
+.trip-flags li {
+	display: flex;
+	line-height: 0;
+}
+
+.trip-flags img {
+	display: block;
+	width: 1.35rem;
+	height: auto;
+	aspect-ratio: 4 / 3;
+	object-fit: cover;
+	border-radius: 2px;
+	border: 1px solid var(--line);
+	background: var(--surface-tint);
+}
+
+.section-head .trip-flags {
+	margin: 0.55rem 0 0.85rem;
+}
+
 .rec-item__rating {
 	display: flex;
 	align-items: center;
@@ -1607,68 +1637,6 @@ p {
 	color: var(--muted);
 }
 
-.planisphere__legend {
-	list-style: none;
-	margin: 1rem 0 0;
-	padding: 0;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.65rem 1.25rem;
-	font-family: var(--font-ui);
-	font-size: 0.92rem;
-	color: var(--muted);
-}
-
-.planisphere__legend:empty {
-	display: none;
-}
-
-.planisphere__legend li {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.4rem;
-}
-
-.planisphere__legend-btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.4rem;
-	margin: 0;
-	padding: 0.15rem 0.2rem;
-	border: none;
-	border-radius: 4px;
-	background: transparent;
-	color: inherit;
-	font: inherit;
-	cursor: pointer;
-	text-align: left;
-}
-
-.planisphere__legend-btn:focus-visible {
-	outline: 2px solid var(--focus-ring);
-	outline-offset: 2px;
-}
-
-.planisphere__legend strong {
-	color: var(--ink);
-	font-weight: 600;
-}
-
-.planisphere__flag {
-	width: 1.35rem;
-	height: auto;
-	aspect-ratio: 4 / 3;
-	object-fit: cover;
-	border-radius: 2px;
-	border: 1px solid var(--line);
-	flex-shrink: 0;
-	background: var(--surface-tint);
-}
-
-.planisphere__note {
-	color: var(--muted);
-}
-
 .trip-map-wrap {
 	margin: 0;
 }
@@ -1861,11 +1829,6 @@ p {
 
 .travel-split__map .planisphere__map .country.is-visited.is-hover-filter {
 	fill: var(--accent-soft);
-}
-
-.travel-split__map .planisphere__legend li.is-hover-filter strong,
-.travel-split__map .planisphere__legend .planisphere__legend-btn.is-hover-filter strong {
-	color: var(--accent-ink);
 }
 
 .itinerary__photo {

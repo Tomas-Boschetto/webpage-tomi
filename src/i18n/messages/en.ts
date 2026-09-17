@@ -8,6 +8,7 @@ export const en = {
 	'nav.recommendations': 'Recommendations',
 	'nav.contact': 'Contact',
 	'nav.language': 'Language',
+	'trip.countries': 'Countries visited',
 	'footer.nav': 'Footer',
 	'footer.tagline': 'Out there, and elsewhere in stories',
 	'footer.linkedin': 'Follow on LinkedIn',
