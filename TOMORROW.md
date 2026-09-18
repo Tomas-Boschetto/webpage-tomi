@@ -18,6 +18,7 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 - [x] **Cover/image dropdown** — pick among candidate posters/covers after a match
 - [x] **Books: read month** — store/display **read month** instead of a full read date
 - [x] **Books: edition publication date** — `edition_published_at` from Open Library editions (editable in admin)
+- [ ] **Film duration** — store/display movie runtime (from TMDB lookup, editable in admin)
 
 ## Admin UX
 
@@ -43,6 +44,7 @@ Context: Continue from trip images, travel split layout, and deploy/R2 setup (20
 - [x] Trip cover: option to **use a stop photo as the trip cover** (no Unsplash required)
 - [x] Travel list cards: tighten spacing / cover sizing now that covers exist
 - [x] Public trip page: photo placement/size polish next to notes and map
+- [ ] **Rearrange filters** — recs filters take too much space; move them so the content (cards / list) sits in a more prominent position
 
 ## Google Cloud (reminders)
 
