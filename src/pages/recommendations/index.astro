@@ -462,6 +462,18 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 </BaseLayout>
 
 <script>
+	document.querySelectorAll('[data-rec-filters]').forEach((filters) => {
+		if (!(filters instanceof HTMLDetailsElement)) return;
+		document.addEventListener('click', (event) => {
+			if (!filters.open) return;
+			if (event.target instanceof Node && filters.contains(event.target)) return;
+			filters.open = false;
+		});
+		document.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape' && filters.open) filters.open = false;
+		});
+	});
+
 	const form = document.getElementById('rec-toolbar');
 	form?.querySelectorAll('select').forEach((select) => {
 		select.addEventListener('change', () => {
