@@ -1047,6 +1047,10 @@ p {
 	font-family: var(--font-ui);
 }
 
+.rec-filters[open] {
+	z-index: 20;
+}
+
 .rec-filters__summary {
 	list-style: none;
 	cursor: pointer;
@@ -1091,14 +1095,14 @@ p {
 	padding: 0.75rem 0.85rem 0.85rem;
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
-	background: var(--surface-sunken-soft);
+	background: var(--surface-raised);
 	font-family: var(--font-ui);
 	position: absolute;
 	right: 0;
 	top: calc(100% + 0.4rem);
 	z-index: 15;
 	min-width: min(100vw - 2rem, 22rem);
-	box-shadow: 0 0.55rem 1.3rem color-mix(in srgb, var(--ink) 10%, transparent);
+	box-shadow: 0 0.55rem 1.3rem color-mix(in srgb, var(--ink) 16%, transparent);
 }
 
 .rec-toolbar__field {
@@ -1116,7 +1120,7 @@ p {
 	padding: 0.5rem 0.7rem;
 	border: 1px solid var(--line);
 	border-radius: var(--radius-md);
-	background-color: var(--surface-sunken);
+	background-color: var(--surface);
 	color: var(--ink);
 	font: inherit;
 	font-size: 0.92rem;
