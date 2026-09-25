@@ -599,10 +599,13 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 
 		countrySelect?.addEventListener('change', () => {
 			const code = countrySelect instanceof HTMLSelectElement ? countrySelect.value : '';
-			planisphere?.dispatchEvent(
-				new CustomEvent('planisphere-set-country', { detail: { code } }),
-			);
 			applyCountryFilter(code);
+			planisphere?.dispatchEvent(
+				new CustomEvent('planisphere-set-country', {
+					bubbles: true,
+					detail: { code },
+				}),
+			);
 		});
 
 		const initial =

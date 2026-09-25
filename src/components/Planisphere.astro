@@ -185,10 +185,11 @@ const mapHtml = highlightWorld(worldSvg, codes);
 				return { x, y, w, h };
 			}
 
-			function animateViewBox(svg, next) {
+			function animateViewBox(svg, next, immediate) {
+				if (svg._zoomRaf) cancelAnimationFrame(svg._zoomRaf);
 				const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 				const from = parseViewBox(svg);
-				if (reduce) {
+				if (reduce || immediate) {
 					svg.setAttribute('viewBox', viewBoxString(next));
 					return;
 				}
@@ -206,9 +207,10 @@ const mapHtml = highlightWorld(worldSvg, codes);
 							h: from.h + (next.h - from.h) * eased,
 						}),
 					);
-					if (t < 1) requestAnimationFrame(frame);
+					if (t < 1) svg._zoomRaf = requestAnimationFrame(frame);
+					else svg.setAttribute('viewBox', viewBoxString(next));
 				}
-				requestAnimationFrame(frame);
+				svg._zoomRaf = requestAnimationFrame(frame);
 			}
 
 			function jitterPins(pins) {
@@ -353,27 +355,29 @@ const mapHtml = highlightWorld(worldSvg, codes);
 						path.classList.toggle('is-selected', Boolean(next) && path.id === next);
 					});
 					if (worldBtn instanceof HTMLElement) worldBtn.hidden = !next;
-					const path = next ? svg.querySelector(`path.country#${CSS.escape(next)}`) : null;
+					const path = next
+						? svg.getElementById(next) || svg.querySelector(`path.country[id="${CSS.escape(next)}"]`)
+						: null;
+					const countryPins = next
+						? trips
+								.map((trip) => trip.byCountry?.[next])
+								.filter(Boolean)
+								.map((point) => project(point.lat, point.lng))
+						: [];
 					let view = WORLD_VIEW;
-					if (path) {
-						const countryPins = trips
-							.map((trip) => trip.byCountry?.[next])
-							.filter(Boolean)
-							.map((point) => project(point.lat, point.lng));
-						let box = largestRingBox(path);
-						if (countryPins.length) {
-							const pinBox = bboxOfPoints(countryPins);
-							const minW = 48;
-							const minH = 24;
-							pinBox.x -= Math.max(0, (minW - pinBox.width) / 2);
-							pinBox.y -= Math.max(0, (minH - pinBox.height) / 2);
-							pinBox.width = Math.max(pinBox.width, minW);
-							pinBox.height = Math.max(pinBox.height, minH);
-							box = pinBox;
-						}
-						view = paddedView(box);
+					if (countryPins.length) {
+						const pinBox = bboxOfPoints(countryPins);
+						const minW = 48;
+						const minH = 24;
+						pinBox.x -= Math.max(0, (minW - pinBox.width) / 2);
+						pinBox.y -= Math.max(0, (minH - pinBox.height) / 2);
+						pinBox.width = Math.max(pinBox.width, minW);
+						pinBox.height = Math.max(pinBox.height, minH);
+						view = paddedView(pinBox);
+					} else if (path) {
+						view = paddedView(largestRingBox(path));
 					}
-					animateViewBox(svg, view);
+					animateViewBox(svg, view, Boolean(opts.immediate));
 					renderPins(next, view);
 					if (!opts.silent) emitCountry(next);
 				}
@@ -403,7 +407,7 @@ const mapHtml = highlightWorld(worldSvg, codes);
 
 				root.addEventListener('planisphere-set-country', (event) => {
 					const code = event instanceof CustomEvent ? String(event.detail?.code || '') : '';
-					setCountry(code, { silent: true });
+					setCountry(code, { silent: true, immediate: true });
 				});
 
 				if (selected) setCountry(selected, { silent: true, immediate: true });
