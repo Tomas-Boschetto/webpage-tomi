@@ -9,6 +9,11 @@ export function flagCdnUrl(code: string, width = 40): string {
 	return `https://flagcdn.com/w${width}/${code.trim().toLowerCase()}.png`;
 }
 
+export function parseCountryCode(value: string | null | undefined): string {
+	const code = String(value || '').trim().toUpperCase();
+	return /^[A-Z]{2}$/.test(code) ? code : '';
+}
+
 /** Unique countries from itinerary stops, in first-seen order. */
 export function uniqueTripCountries(
 	items: Array<{ country_code?: string | null; country_name?: string | null }>,

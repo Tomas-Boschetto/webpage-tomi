@@ -131,6 +131,31 @@ const tiles = mapTiles(env.CARTO_API_KEY, Astro.url.hostname, env.SITE_URL);
 						hoverId = null;
 					}
 
+					function scrollStopIntoView(el, block) {
+						var list = el.closest('[data-itinerary-list]');
+						if (list && list.scrollHeight > list.clientHeight + 8) {
+							var listRect = list.getBoundingClientRect();
+							var elRect = el.getBoundingClientRect();
+							var pad = 12;
+							var delta = 0;
+							if (block === 'center') {
+								delta = elRect.top + elRect.height / 2 - (listRect.top + listRect.height / 2);
+							} else if (elRect.top < listRect.top + pad) {
+								delta = elRect.top - listRect.top - pad;
+							} else if (elRect.bottom > listRect.bottom - pad) {
+								delta = elRect.bottom - listRect.bottom + pad;
+							}
+							if (delta) {
+								list.scrollBy({ top: delta, behavior: scrollBehavior });
+							}
+							return;
+						}
+						var viewRect = el.getBoundingClientRect();
+						if (viewRect.top < 88 || viewRect.bottom > window.innerHeight - 24) {
+							el.scrollIntoView({ behavior: scrollBehavior, block: block || 'nearest' });
+						}
+					}
+
 					function setHover(id, fromMap) {
 						if (hoverId === id) return;
 						clearHover();
@@ -139,14 +164,7 @@ const tiles = mapTiles(env.CARTO_API_KEY, Astro.url.hostname, env.SITE_URL);
 						var el = document.getElementById('stop-' + id);
 						if (el) {
 							el.classList.add('itinerary__item--hover');
-							if (fromMap) {
-								var elRect = el.getBoundingClientRect();
-								var outOfView =
-									elRect.top < 88 || elRect.bottom > window.innerHeight - 24;
-								if (outOfView) {
-									el.scrollIntoView({ behavior: scrollBehavior, block: 'nearest' });
-								}
-							}
+							if (fromMap) scrollStopIntoView(el, 'nearest');
 						}
 						setMarkerHover(id, true);
 					}
@@ -229,7 +247,7 @@ const tiles = mapTiles(env.CARTO_API_KEY, Astro.url.hostname, env.SITE_URL);
 							setActive(stop.id);
 							var el = document.getElementById('stop-' + stop.id);
 							if (!el) return;
-							el.scrollIntoView({ behavior: scrollBehavior, block: 'center' });
+							scrollStopIntoView(el, 'center');
 							el.focus({ preventScroll: true });
 						});
 						marker.on('mouseover', function () {

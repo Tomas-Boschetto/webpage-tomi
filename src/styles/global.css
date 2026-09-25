@@ -935,7 +935,7 @@ p {
 .trip-hero__summary {
 	margin: 0;
 	color: var(--muted);
-	max-width: var(--measure);
+	max-width: none;
 	font-size: 1.05rem;
 	line-height: 1.55;
 }
@@ -950,22 +950,6 @@ p {
 
 .trip-itinerary {
 	margin-top: 0.25rem;
-}
-
-@media (min-width: 900px) {
-	.trip-hero--with-map {
-		grid-template-columns: minmax(22rem, 1fr) minmax(26rem, 1.2fr);
-		gap: 1.75rem 2.25rem;
-		align-items: start;
-	}
-
-	.trip-hero--with-map .trip-hero__summary {
-		max-width: none;
-	}
-
-	.trip-hero--with-map .trip-map {
-		height: min(46vh, 26rem);
-	}
 }
 
 .about-prose {
@@ -1084,6 +1068,10 @@ p {
 	background: var(--accent-wash);
 	border-radius: 999px;
 	padding: 0.1rem 0.45rem;
+}
+
+.rec-filters__count[hidden] {
+	display: none;
 }
 
 .rec-toolbar {
@@ -2170,18 +2158,18 @@ p {
 	}
 
 	.itinerary-split {
-		grid-template-columns: minmax(16rem, 0.95fr) minmax(0, 1.35fr);
+		grid-template-columns: minmax(22rem, 1.2fr) minmax(20rem, 1fr);
 		gap: 1.5rem;
 		align-items: start;
 	}
 
 	.itinerary-split__list {
-		max-height: min(78vh, 42rem);
+		max-height: min(78vh, 46rem);
 	}
 
 	.itinerary-split__map {
 		position: sticky;
-		top: 1rem;
+		top: 5.25rem;
 	}
 
 	.itinerary-split .trip-map {

@@ -4,8 +4,8 @@ import TripMap from '../../components/TripMap.astro';
 import ItineraryStops from '../../components/ItineraryStops.astro';
 import { env } from 'cloudflare:workers';
 import { getTripWithItems } from '../../lib/trips';
-import { uniqueTripCountries } from '../../lib/countries';
-import { DEFAULT_LOCALE, localizedPath, type Locale } from '../../i18n/locales';
+import { parseCountryCode, uniqueTripCountries } from '../../lib/countries';
+import { DEFAULT_LOCALE, localizedPath, stripLocalePrefix, type Locale } from '../../i18n/locales';
 import { t } from '../../i18n';
 import { localizeTripWithItems } from '../../lib/i18n-content';
 import TripFlags from '../../components/TripFlags.astro';
@@ -25,7 +25,23 @@ if (!trip) {
 	Astro.response.status = 404;
 }
 
-const travelHref = `${localizedPath(locale, '/recommendations')}?type=travel`;
+function countryFromReferer(referer: string | null): string {
+	if (!referer) return '';
+	try {
+		const ref = new URL(referer);
+		if (stripLocalePrefix(ref.pathname) !== '/recommendations') return '';
+		return parseCountryCode(ref.searchParams.get('country'));
+	} catch {
+		return '';
+	}
+}
+
+const travelCountry =
+	parseCountryCode(Astro.url.searchParams.get('country')) ||
+	countryFromReferer(Astro.request.headers.get('referer'));
+const travelHref = travelCountry
+	? `${localizedPath(locale, '/recommendations')}?type=travel&country=${travelCountry}`
+	: `${localizedPath(locale, '/recommendations')}?type=travel`;
 const hasMap =
 	Boolean(trip) && trip!.items.some((item) => item.lat != null && item.lng != null);
 const tripCountries = trip ? uniqueTripCountries(trip.items) : [];
@@ -37,7 +53,7 @@ const tripCountries = trip ? uniqueTripCountries(trip.items) : [];
 			<header class="section-head">
 				<h1>{t(locale, 'trip.notFound')}</h1>
 				<p>
-					<a href={travelHref}>{t(locale, 'trip.back')}</a>
+					<a href={travelHref} data-travel-back>{t(locale, 'trip.back')}</a>
 				</p>
 			</header>
 		</BaseLayout>
@@ -48,27 +64,29 @@ const tripCountries = trip ? uniqueTripCountries(trip.items) : [];
 			description={trip.summary}
 			image={trip.image_url || '/images/hero-ar.jpg'}
 		>
-			<header class:list={['trip-hero', hasMap && 'trip-hero--with-map']}>
+			<header class="trip-hero">
 				<div class="trip-hero__copy">
 					<h1>{trip.title}</h1>
 					<TripFlags countries={tripCountries} locale={locale} />
 					<p class="trip-hero__summary">{trip.summary}</p>
 					<p class="trip-hero__back">
-						<a href={travelHref}>{t(locale, 'trip.allTrips')}</a>
+						<a href={travelHref} data-travel-back>{t(locale, 'trip.allTrips')}</a>
 					</p>
 				</div>
-				{
-					hasMap && (
-						<div class="trip-hero__map">
-							<TripMap items={trip.items} tripTitle={trip.title} locale={locale} compact />
-						</div>
-					)
-				}
 			</header>
 
 			{
 				trip.items.length === 0 ? (
 					<p class="empty">{t(locale, 'trip.emptyStops')}</p>
+				) : hasMap ? (
+					<section class="itinerary-split">
+						<div class="itinerary-split__list" data-itinerary-list>
+							<ItineraryStops items={trip.items} locale={locale} />
+						</div>
+						<div class="itinerary-split__map">
+							<TripMap items={trip.items} tripTitle={trip.title} locale={locale} compact />
+						</div>
+					</section>
 				) : (
 					<section class="trip-itinerary" data-itinerary-list>
 						<ItineraryStops items={trip.items} locale={locale} />
@@ -78,3 +96,19 @@ const tripCountries = trip ? uniqueTripCountries(trip.items) : [];
 		</BaseLayout>
 	)
 }
+
+<script is:inline>
+	(function () {
+		try {
+			var code = sessionStorage.getItem('recs-travel-country') || '';
+			if (!/^[A-Za-z]{2}$/.test(code)) return;
+			code = code.toUpperCase();
+			document.querySelectorAll('a[href*="type=travel"]').forEach(function (a) {
+				var url = new URL(a.href, window.location.origin);
+				if (url.pathname.indexOf('/recommendations') === -1) return;
+				url.searchParams.set('country', code);
+				a.setAttribute('href', url.pathname + url.search + url.hash);
+			});
+		} catch (e) {}
+	})();
+</script>
