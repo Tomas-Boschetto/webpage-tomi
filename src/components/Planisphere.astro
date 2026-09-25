@@ -328,6 +328,7 @@ const mapHtml = highlightWorld(worldSvg, codes);
 								}),
 							);
 						});
+						link.addEventListener('blur', () => hideTooltip());
 						link.addEventListener('click', (event) => event.stopPropagation());
 						pinLayer.appendChild(link);
 					}
@@ -398,6 +399,7 @@ const mapHtml = highlightWorld(worldSvg, codes);
 				});
 
 				worldBtn?.addEventListener('click', () => setCountry(''));
+				root.querySelector('.planisphere__stage')?.addEventListener('mouseleave', hideTooltip);
 
 				root.addEventListener('planisphere-set-country', (event) => {
 					const code = event instanceof CustomEvent ? String(event.detail?.code || '') : '';
