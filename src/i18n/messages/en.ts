@@ -6,6 +6,7 @@ export const en = {
 	'nav.home': 'Home',
 	'nav.about': 'About me',
 	'nav.recommendations': 'Recommendations',
+	'nav.recsMenu': 'Recommendation sections',
 	'nav.contact': 'Contact',
 	'nav.language': 'Language',
 	'trip.countries': 'Countries visited',
@@ -154,6 +155,8 @@ export const en = {
 	'recs.travel': 'Travel',
 	'recs.empty': 'Nothing published in this view yet.',
 	'recs.filters': 'Filters',
+	'recs.filterAndSort': 'Filter & sort',
+	'recs.activeFilterCount': '{n} on',
 	'recs.sort': 'Sort',
 	'recs.genre': 'Genre',
 	'recs.country': 'Country',
@@ -280,6 +283,8 @@ export const en = {
 	'planisphere.credit': 'Custom SVG planisphere · boundaries from Natural Earth',
 	'planisphere.visited': 'visited',
 	'planisphere.legendItem': '{country} ({code})',
+	'planisphere.showWorld': 'Show world map',
+	'planisphere.tripPin': '{title}',
 
 	'layout.defaultDescription': 'Personal movie, book, and travel recommendations.',
 } as const;

@@ -6,6 +6,7 @@ export const es: Record<MessageKey, string> = {
 	'nav.home': 'Inicio',
 	'nav.about': 'Sobre mí',
 	'nav.recommendations': 'Recomendaciones',
+	'nav.recsMenu': 'Secciones de recomendaciones',
 	'nav.contact': 'Contacto',
 	'nav.language': 'Idioma',
 	'trip.countries': 'Países visitados',
@@ -156,6 +157,8 @@ export const es: Record<MessageKey, string> = {
 	'recs.travel': 'Viajes',
 	'recs.empty': 'Nada publicado en esta vista todavía.',
 	'recs.filters': 'Filtros',
+	'recs.filterAndSort': 'Filtrar y ordenar',
+	'recs.activeFilterCount': '{n} activos',
 	'recs.sort': 'Ordenar',
 	'recs.genre': 'Género',
 	'recs.country': 'País',
@@ -282,6 +285,8 @@ export const es: Record<MessageKey, string> = {
 	'planisphere.credit': 'Planisferio SVG personalizado · fronteras de Natural Earth',
 	'planisphere.visited': 'visitado',
 	'planisphere.legendItem': '{country} ({code})',
+	'planisphere.showWorld': 'Ver el mapamundi',
+	'planisphere.tripPin': '{title}',
 
 	'layout.defaultDescription': 'Recomendaciones personales de películas, libros y viajes.',
 };

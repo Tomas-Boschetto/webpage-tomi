@@ -51,13 +51,20 @@ const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 
 const homeHref = localizedPath(locale, '/');
 const aboutHref = localizedPath(locale, '/about');
-const recsHref = localizedPath(locale, '/recommendations') + '?type=travel';
+const recsBase = localizedPath(locale, '/recommendations');
+const recsTravelHref = `${recsBase}?type=travel`;
+const recsBooksHref = `${recsBase}?type=book`;
+const recsMoviesHref = `${recsBase}?type=movie`;
 const contactHref = localizedPath(locale, '/contact');
 const disclaimerHref = localizedPath(locale, '/disclaimer');
 
+const recType = Astro.url.searchParams.get('type');
 const isHome = pathNoLocale === '/' || pathNoLocale === '';
 const isAbout = pathNoLocale.startsWith('/about');
 const isRecs = pathNoLocale.startsWith('/recommendations') || pathNoLocale.startsWith('/trips');
+const isTravel = pathNoLocale.startsWith('/trips') || (isRecs && recType === 'travel');
+const isBooks = pathNoLocale.startsWith('/recommendations') && recType === 'book';
+const isMovies = pathNoLocale.startsWith('/recommendations') && recType === 'movie';
 const isContact = pathNoLocale.startsWith('/contact');
 ---
 
@@ -135,9 +142,27 @@ const isContact = pathNoLocale.startsWith('/contact');
 					<a href={aboutHref} aria-current={isAbout ? 'page' : undefined}
 						>{t(locale, 'nav.about')}</a
 					>
-					<a href={recsHref} aria-current={isRecs ? 'page' : undefined}
-						>{t(locale, 'nav.recommendations')}</a
-					>
+					<div class="nav-menu">
+						<details class="nav-menu__details" data-nav-menu>
+							<summary
+								class="nav-menu__summary"
+								aria-current={isRecs ? 'true' : undefined}
+							>
+								{t(locale, 'nav.recommendations')}
+							</summary>
+							<div class="nav-menu__panel" role="navigation" aria-label={t(locale, 'nav.recsMenu')}>
+								<a href={recsTravelHref} aria-current={isTravel ? 'page' : undefined}
+									>{t(locale, 'recs.travel')}</a
+								>
+								<a href={recsBooksHref} aria-current={isBooks ? 'page' : undefined}
+									>{t(locale, 'recs.books')}</a
+								>
+								<a href={recsMoviesHref} aria-current={isMovies ? 'page' : undefined}
+									>{t(locale, 'recs.movies')}</a
+								>
+							</div>
+						</details>
+					</div>
 					<a href={contactHref} aria-current={isContact ? 'page' : undefined}
 						>{t(locale, 'nav.contact')}</a
 					>
@@ -202,6 +227,17 @@ const isContact = pathNoLocale.startsWith('/contact');
 				if (select instanceof HTMLSelectElement && select.value) {
 					window.location.assign(select.value);
 				}
+			});
+			document.querySelectorAll('[data-nav-menu]').forEach((menu) => {
+				if (!(menu instanceof HTMLDetailsElement)) return;
+				document.addEventListener('click', (event) => {
+					if (!menu.open) return;
+					if (event.target instanceof Node && menu.contains(event.target)) return;
+					menu.open = false;
+				});
+				document.addEventListener('keydown', (event) => {
+					if (event.key === 'Escape') menu.open = false;
+				});
 			});
 		</script>
 	</body>

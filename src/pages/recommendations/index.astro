@@ -5,11 +5,8 @@ import TripCard from '../../components/TripCard.astro';
 import Planisphere from '../../components/Planisphere.astro';
 import { env } from 'cloudflare:workers';
 import { listPublished } from '../../lib/db';
-import {
-	listCountriesFromPublishedStops,
-	listPublishedTripIdsForCountry,
-	uniqueTripCountries,
-} from '../../lib/countries';
+import { listCountriesFromPublishedStops, uniqueTripCountries } from '../../lib/countries';
+import { geoCentroid, tripSummaryTeaser, type TripMapPin } from '../../lib/planisphere';
 import {
 	extractActors,
 	extractAuthors,
@@ -84,35 +81,58 @@ const countries = showTravel ? await listCountriesFromPublishedStops(env.DB) : [
 const countryFilterValid =
 	showTravel && countryParam.length === 2 && countries.some((c) => c.country_code === countryParam);
 
-let rawTrips = allTrips;
-if (showTravel && countryFilterValid) {
-	const tripIds = await listPublishedTripIdsForCountry(env.DB, countryParam);
-	rawTrips = allTrips.filter((trip) => tripIds.has(trip.id));
-}
-
-const trips = sortTrips(rawTrips, tripSort);
+const trips = sortTrips(allTrips, tripSort);
 
 const tripCards = await Promise.all(
 	trips.map(async (trip) => {
 		const items = await listItineraryForTrip(env.DB, trip.id);
+		const mappable = items.filter(
+			(item) => item.lat != null && item.lng != null && Number.isFinite(item.lat) && Number.isFinite(item.lng),
+		);
+		const byCountry: TripMapPin['byCountry'] = {};
+		const grouped = new Map<string, Array<{ lat: number; lng: number }>>();
+		for (const item of mappable) {
+			const code = item.country_code?.trim().toUpperCase() || '';
+			if (!/^[A-Z]{2}$/.test(code)) continue;
+			const list = grouped.get(code) || [];
+			list.push({ lat: item.lat as number, lng: item.lng as number });
+			grouped.set(code, list);
+		}
+		for (const [code, points] of grouped) {
+			const center = geoCentroid(points);
+			if (center) byCountry[code] = center;
+		}
+		const overall = geoCentroid(mappable.map((item) => ({ lat: item.lat as number, lng: item.lng as number })));
+		const pin: TripMapPin | null = overall
+			? {
+					id: trip.id,
+					title: trip.title,
+					summary: tripSummaryTeaser(trip.summary),
+					href: localizedPath(locale, `/trips/${trip.id}`),
+					countries: [...grouped.keys()],
+					lat: overall.lat,
+					lng: overall.lng,
+					byCountry,
+				}
+			: null;
 		return {
 			trip,
 			stopCount: items.length,
 			countries: uniqueTripCountries(items),
+			pin,
 		};
 	}),
 );
 
-const recsBase = localizedPath(locale, '/recommendations');
-function hrefForType(type: 'movie' | 'book' | 'travel') {
-	return `${recsBase}?type=${type}`;
-}
+const tripPins = tripCards
+	.map((card) => card.pin)
+	.filter((pin): pin is TripMapPin => pin != null);
 
-const tabs = [
-	{ label: t(locale, 'recs.travel'), href: hrefForType('travel'), current: showTravel },
-	{ label: t(locale, 'recs.books'), href: hrefForType('book'), current: activeType === 'book' },
-	{ label: t(locale, 'recs.movies'), href: hrefForType('movie'), current: activeType === 'movie' },
-];
+const pageHeading = showTravel
+	? t(locale, 'recs.travel')
+	: activeType === 'book'
+		? t(locale, 'recs.books')
+		: t(locale, 'recs.movies');
 
 const empty = showTravel ? tripCards.length === 0 : mediaItems.length === 0;
 
@@ -138,32 +158,39 @@ const sectionBlurb = showTravel
 		? t(locale, 'recs.blurb.books')
 		: t(locale, 'recs.blurb.movies');
 
+const activeFilterCount = [
+	genreParam,
+	awardParam,
+	authorParam,
+	directorParam,
+	actorParam,
+	minRating != null ? String(minRating) : '',
+	countryFilterValid ? countryParam : '',
+].filter(Boolean).length;
+
 const PAGE_SIZE = 10;
 const hasMoreMedia = !showTravel && mediaItems.length > PAGE_SIZE;
 const msgShowingMore = t(locale, 'recs.showingMore', { shown: '{shown}', total: '{total}' });
 const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 ---
 
-<BaseLayout
-	locale={locale}
-	title={t(locale, 'recs.title')}
-	description={t(locale, 'recs.description')}
->
-	<header class="section-head">
-		<h1>{t(locale, 'recs.title')}</h1>
-		<p>{sectionBlurb}</p>
-	</header>
-
-	<nav class="tabs" aria-label={t(locale, 'recs.tabs')}>
+<BaseLayout locale={locale} title={pageHeading} description={sectionBlurb}>
+	<header class="section-head section-head--recs">
+		<div class="section-head__copy">
+			<h1>{pageHeading}</h1>
+			<p>{sectionBlurb}</p>
+		</div>
 		{
-			tabs.map((tab) => (
-				<a href={tab.href} aria-current={tab.current ? 'page' : undefined}>
-					{tab.label}
-				</a>
-			))
-		}
-	</nav>
-
+			(showMediaToolbar || showTravelToolbar) && (
+				<details class="rec-filters" data-rec-filters open={activeFilterCount > 0 || undefined}>
+					<summary class="rec-filters__summary">
+						{t(locale, 'recs.filterAndSort')}
+						{activeFilterCount > 0 && (
+							<span class="rec-filters__count">
+								{t(locale, 'recs.activeFilterCount', { n: activeFilterCount })}
+							</span>
+						)}
+					</summary>
 	{
 		showMediaToolbar && (
 			<form class="rec-toolbar" method="get" id="rec-toolbar">
@@ -317,6 +344,10 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 			</form>
 		)
 	}
+				</details>
+			)
+		}
+	</header>
 
 	{
 		empty ? (
@@ -339,7 +370,13 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 					</p>
 				</div>
 				<div class="travel-split__map">
-					<Planisphere countries={countries} id="travel-planisphere" locale={locale} />
+					<Planisphere
+						countries={countries}
+						id="travel-planisphere"
+						locale={locale}
+						trips={tripPins}
+						selectedCountry={countryFilterValid ? countryParam : ''}
+					/>
 				</div>
 			</section>
 		) : (
@@ -428,7 +465,9 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 	const form = document.getElementById('rec-toolbar');
 	form?.querySelectorAll('select').forEach((select) => {
 		select.addEventListener('change', () => {
-			if (form instanceof HTMLFormElement) form.requestSubmit();
+			if (!(form instanceof HTMLFormElement)) return;
+			if (select instanceof HTMLSelectElement && select.name === 'country') return;
+			form.requestSubmit();
 		});
 	});
 
@@ -487,8 +526,9 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 		const list = split.querySelector('[data-travel-list]');
 		const emptyEl = split.querySelector('[data-travel-empty]');
 		const cards = Array.from(split.querySelectorAll('[data-trip-card]'));
-		const mapRoot = split.querySelector('[data-planisphere-map]');
 		const mapColumn = split.querySelector('.travel-split__map');
+		const planisphere = split.querySelector('[data-planisphere]');
+		const countrySelect = form?.querySelector('select[name="country"]');
 
 		function syncListHeight() {
 			if (!(list instanceof HTMLElement) || !(mapColumn instanceof HTMLElement)) return;
@@ -505,6 +545,13 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 		window.addEventListener('resize', syncListHeight);
 		syncListHeight();
 
+		function syncCountryUrl(code) {
+			const url = new URL(window.location.href);
+			if (code) url.searchParams.set('country', code);
+			else url.searchParams.delete('country');
+			history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+		}
+
 		function applyCountryFilter(code) {
 			const normalized = code ? String(code).toUpperCase() : '';
 			let visible = 0;
@@ -520,21 +567,46 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 			if (emptyEl instanceof HTMLElement) {
 				emptyEl.hidden = visible > 0;
 			}
-			mapRoot?.querySelectorAll('path.country.is-visited').forEach((path) => {
-				path.classList.toggle('is-hover-filter', Boolean(normalized) && path.id === normalized);
+			if (countrySelect instanceof HTMLSelectElement && countrySelect.value !== normalized) {
+				countrySelect.value = normalized;
+			}
+			syncCountryUrl(normalized);
+		}
+
+		function highlightTrip(id) {
+			cards.forEach((card) => {
+				card.classList.toggle('is-pin-hover', Boolean(id) && card.getAttribute('data-trip-id') === id);
 			});
+			if (!id) return;
+			const card = cards.find((el) => el.getAttribute('data-trip-id') === id);
+			if (card instanceof HTMLElement && list instanceof HTMLElement) {
+				const cardTop = card.offsetTop - list.offsetTop;
+				const cardBottom = cardTop + card.offsetHeight;
+				if (cardTop < list.scrollTop || cardBottom > list.scrollTop + list.clientHeight) {
+					card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+				}
+			}
 		}
 
-		function clearHoverFilter() {
-			applyCountryFilter('');
-		}
-
-		mapRoot?.querySelectorAll('path.country.is-visited').forEach((path) => {
-			path.addEventListener('mouseenter', () => applyCountryFilter(path.id));
-			path.addEventListener('mouseleave', clearHoverFilter);
-			path.addEventListener('focus', () => applyCountryFilter(path.id));
-			path.addEventListener('blur', clearHoverFilter);
-			if (!path.hasAttribute('tabindex')) path.setAttribute('tabindex', '0');
+		planisphere?.addEventListener('planisphere-country', (event) => {
+			const code = event instanceof CustomEvent ? String(event.detail?.code || '') : '';
+			applyCountryFilter(code);
 		});
+		planisphere?.addEventListener('planisphere-pin-hover', (event) => {
+			const id = event instanceof CustomEvent ? String(event.detail?.id || '') : '';
+			highlightTrip(id);
+		});
+
+		countrySelect?.addEventListener('change', () => {
+			const code = countrySelect instanceof HTMLSelectElement ? countrySelect.value : '';
+			planisphere?.dispatchEvent(
+				new CustomEvent('planisphere-set-country', { detail: { code } }),
+			);
+			applyCountryFilter(code);
+		});
+
+		const initial =
+			countrySelect instanceof HTMLSelectElement ? countrySelect.value : '';
+		if (initial) applyCountryFilter(initial);
 	}
 </script>

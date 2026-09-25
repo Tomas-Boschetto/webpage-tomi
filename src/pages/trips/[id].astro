@@ -48,29 +48,31 @@ const tripCountries = trip ? uniqueTripCountries(trip.items) : [];
 			description={trip.summary}
 			image={trip.image_url || '/images/hero-ar.jpg'}
 		>
-			<header class="section-head">
-				<h1>{trip.title}</h1>
-				<TripFlags countries={tripCountries} locale={locale} />
-				<p>{trip.summary}</p>
-				<p>
-					<a href={travelHref}>{t(locale, 'trip.allTrips')}</a>
-				</p>
+			<header class:list={['trip-hero', hasMap && 'trip-hero--with-map']}>
+				<div class="trip-hero__copy">
+					<h1>{trip.title}</h1>
+					<TripFlags countries={tripCountries} locale={locale} />
+					<p class="trip-hero__summary">{trip.summary}</p>
+					<p class="trip-hero__back">
+						<a href={travelHref}>{t(locale, 'trip.allTrips')}</a>
+					</p>
+				</div>
+				{
+					hasMap && (
+						<div class="trip-hero__map">
+							<TripMap items={trip.items} tripTitle={trip.title} locale={locale} compact />
+						</div>
+					)
+				}
 			</header>
 
 			{
 				trip.items.length === 0 ? (
 					<p class="empty">{t(locale, 'trip.emptyStops')}</p>
-				) : hasMap ? (
-					<section class="itinerary-split" data-itinerary-split>
-						<div class="itinerary-split__list" data-itinerary-list>
-							<ItineraryStops items={trip.items} locale={locale} />
-						</div>
-						<div class="itinerary-split__map">
-							<TripMap items={trip.items} tripTitle={trip.title} locale={locale} />
-						</div>
-					</section>
 				) : (
-					<ItineraryStops items={trip.items} locale={locale} />
+					<section class="trip-itinerary" data-itinerary-list>
+						<ItineraryStops items={trip.items} locale={locale} />
+					</section>
 				)
 			}
 		</BaseLayout>

@@ -2,6 +2,7 @@
 import worldSvg from '../assets/maps/world.svg?raw';
 import { DEFAULT_LOCALE, type Locale } from '../i18n/locales';
 import { t } from '../i18n';
+import type { TripMapPin } from '../lib/planisphere';
 
 interface Country {
 	country_code: string;
@@ -15,6 +16,8 @@ interface Props {
 	lead?: string;
 	id?: string;
 	locale?: Locale;
+	trips?: TripMapPin[];
+	selectedCountry?: string;
 }
 
 const locale: Locale = Astro.props.locale || DEFAULT_LOCALE;
@@ -23,6 +26,8 @@ const {
 	title = t(locale, 'planisphere.title'),
 	lead,
 	id,
+	trips = [],
+	selectedCountry = '',
 } = Astro.props;
 const codes = new Set(countries.map((c) => c.country_code.toUpperCase()));
 const nameByCode = new Map(countries.map((c) => [c.country_code.toUpperCase(), c.name]));
@@ -37,6 +42,8 @@ const resolvedLead =
 
 const leadId = id ? `${id}-lead` : 'planisphere-lead';
 const visitedWord = t(locale, 'planisphere.visited');
+const interactive = trips.length > 0;
+const initialCountry = selectedCountry.trim().toUpperCase();
 
 function escapeXml(value: string): string {
 	return value
@@ -62,18 +69,343 @@ function highlightWorld(svg: string, visited: Set<string>): string {
 const mapHtml = highlightWorld(worldSvg, codes);
 ---
 
-<section class="planisphere" aria-label={t(locale, 'planisphere.aria')} id={id}>
+<section
+	class:list={['planisphere', interactive && 'planisphere--interactive']}
+	aria-label={t(locale, 'planisphere.aria')}
+	id={id}
+	data-planisphere
+	data-selected-country={initialCountry}
+	data-trips={interactive ? JSON.stringify(trips) : undefined}
+>
 	<header class="planisphere__head">
 		<h2 class="planisphere__title">{title}</h2>
 		<p class="planisphere__lead" id={leadId} data-planisphere-lead>{resolvedLead}</p>
 	</header>
-	<div
-		class="planisphere__map"
-		role="img"
-		aria-label={t(locale, 'planisphere.mapAria')}
-		aria-describedby={leadId}
-		data-planisphere-map
-		set:html={mapHtml}
-	/>
+	<div class="planisphere__stage">
+		{
+			interactive && (
+				<button type="button" class="planisphere__world" hidden data-planisphere-world>
+					{t(locale, 'planisphere.showWorld')}
+				</button>
+			)
+		}
+		<div
+			class="planisphere__map"
+			role="img"
+			aria-label={t(locale, 'planisphere.mapAria')}
+			aria-describedby={leadId}
+			data-planisphere-map
+			set:html={mapHtml}
+		/>
+		{
+			interactive && (
+				<div class="planisphere__tooltip" hidden data-planisphere-tooltip role="tooltip"></div>
+			)
+		}
+	</div>
 	<p class="planisphere__credit">{t(locale, 'planisphere.credit')}</p>
 </section>
+
+{
+	interactive && (
+		<script>
+			const WORLD_VIEW = { x: 0, y: 0, w: 1000, h: 500 };
+
+			function project(lat, lng) {
+				return {
+					x: ((lng + 180) / 360) * 1000,
+					y: ((90 - lat) / 180) * 500,
+				};
+			}
+
+			function pathPoints(d) {
+				const nums = String(d || '').match(/-?\d*\.?\d+/g)?.map(Number) || [];
+				const pts = [];
+				for (let i = 0; i + 1 < nums.length; i += 2) {
+					pts.push({ x: nums[i], y: nums[i + 1] });
+				}
+				return pts;
+			}
+
+			function bboxOfPoints(pts) {
+				let minX = Infinity;
+				let minY = Infinity;
+				let maxX = -Infinity;
+				let maxY = -Infinity;
+				for (const pt of pts) {
+					minX = Math.min(minX, pt.x);
+					minY = Math.min(minY, pt.y);
+					maxX = Math.max(maxX, pt.x);
+					maxY = Math.max(maxY, pt.y);
+				}
+				return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+			}
+
+			/** Largest ring so overseas territories do not pull the camera away. */
+			function largestRingBox(path) {
+				const rings = String(path.getAttribute('d') || '')
+					.split(/(?=[Mm])/)
+					.filter((part) => /[Mm]/.test(part));
+				let best = null;
+				let bestN = 0;
+				for (const ring of rings) {
+					const pts = pathPoints(ring);
+					if (pts.length > bestN) {
+						bestN = pts.length;
+						best = bboxOfPoints(pts);
+					}
+				}
+				if (best && Number.isFinite(best.width) && best.width > 0 && best.height > 0) {
+					return best;
+				}
+				return path.getBBox();
+			}
+
+			function paddedView(box) {
+				const pad = Math.max(box.width, box.height) * 0.22 + 10;
+				let x = box.x - pad;
+				let y = box.y - pad;
+				let w = box.width + pad * 2;
+				let h = box.height + pad * 2;
+				const aspect = WORLD_VIEW.w / WORLD_VIEW.h;
+				if (w / h > aspect) h = w / aspect;
+				else w = h * aspect;
+				x -= (w - (box.width + pad * 2)) / 2;
+				y -= (h - (box.height + pad * 2)) / 2;
+				return { x, y, w, h };
+			}
+
+			function viewBoxString(view) {
+				return `${view.x} ${view.y} ${view.w} ${view.h}`;
+			}
+
+			function parseViewBox(svg) {
+				const raw = svg.getAttribute('viewBox') || '0 0 1000 500';
+				const [x, y, w, h] = raw.split(/[\s,]+/).map(Number);
+				return { x, y, w, h };
+			}
+
+			function animateViewBox(svg, next) {
+				const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+				const from = parseViewBox(svg);
+				if (reduce) {
+					svg.setAttribute('viewBox', viewBoxString(next));
+					return;
+				}
+				const start = performance.now();
+				const duration = 420;
+				function frame(now) {
+					const t = Math.min(1, (now - start) / duration);
+					const eased = 1 - (1 - t) ** 3;
+					svg.setAttribute(
+						'viewBox',
+						viewBoxString({
+							x: from.x + (next.x - from.x) * eased,
+							y: from.y + (next.y - from.y) * eased,
+							w: from.w + (next.w - from.w) * eased,
+							h: from.h + (next.h - from.h) * eased,
+						}),
+					);
+					if (t < 1) requestAnimationFrame(frame);
+				}
+				requestAnimationFrame(frame);
+			}
+
+			function jitterPins(pins) {
+				const seen = new Map();
+				return pins.map((pin) => {
+					const key = `${pin.lat.toFixed(2)},${pin.lng.toFixed(2)}`;
+					const n = seen.get(key) || 0;
+					seen.set(key, n + 1);
+					if (n === 0) return pin;
+					const angle = n * 2.1;
+					const dist = 0.18 * n;
+					return {
+						...pin,
+						lat: pin.lat + Math.sin(angle) * dist,
+						lng: pin.lng + Math.cos(angle) * dist,
+					};
+				});
+			}
+
+			document.querySelectorAll('[data-planisphere][data-trips]').forEach((root) => {
+				if (!(root instanceof HTMLElement)) return;
+				const mapRoot = root.querySelector('[data-planisphere-map]');
+				const svg = mapRoot?.querySelector('svg');
+				const worldBtn = root.querySelector('[data-planisphere-world]');
+				const tooltip = root.querySelector('[data-planisphere-tooltip]');
+				if (!(svg instanceof SVGSVGElement)) return;
+
+				let trips = [];
+				try {
+					trips = JSON.parse(root.dataset.trips || '[]');
+				} catch {
+					trips = [];
+				}
+
+				let selected = String(root.dataset.selectedCountry || '').toUpperCase();
+				let pinLayer = svg.querySelector('.planisphere__pins');
+				if (!pinLayer) {
+					pinLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+					pinLayer.setAttribute('class', 'planisphere__pins');
+					svg.appendChild(pinLayer);
+				}
+
+				function hideTooltip() {
+					if (tooltip instanceof HTMLElement) {
+						tooltip.hidden = true;
+						tooltip.innerHTML = '';
+					}
+				}
+
+				function showTooltip(pin, event) {
+					if (!(tooltip instanceof HTMLElement) || !(root instanceof HTMLElement)) return;
+					const title = document.createElement('strong');
+					title.textContent = pin.title;
+					tooltip.replaceChildren(title);
+					if (pin.summary) {
+						const summary = document.createElement('span');
+						summary.textContent = pin.summary;
+						tooltip.appendChild(summary);
+					}
+					tooltip.hidden = false;
+					const stage = root.querySelector('.planisphere__stage');
+					if (!(stage instanceof HTMLElement)) return;
+					const rect = stage.getBoundingClientRect();
+					const x = event.clientX - rect.left;
+					const y = event.clientY - rect.top;
+					tooltip.style.left = `${Math.min(rect.width - 16, Math.max(16, x))}px`;
+					tooltip.style.top = `${Math.max(12, y - 12)}px`;
+				}
+
+				function pinRadiusFor(view) {
+					const height = svg.clientHeight || 300;
+					const raw = (view.h / height) * 5.5;
+					return Math.min(3.2, Math.max(1.05, raw));
+				}
+
+				function renderPins(code, view) {
+					pinLayer.replaceChildren();
+					hideTooltip();
+					if (!code) return;
+					const raw = trips
+						.map((trip) => {
+							const local = trip.byCountry?.[code];
+							if (!local) return null;
+							return { ...trip, lat: local.lat, lng: local.lng };
+						})
+						.filter(Boolean);
+					const placed = jitterPins(raw);
+					const r = pinRadiusFor(view || parseViewBox(svg));
+					for (const pin of placed) {
+						const { x, y } = project(pin.lat, pin.lng);
+						const link = document.createElementNS('http://www.w3.org/2000/svg', 'a');
+						link.setAttribute('href', pin.href);
+						link.setAttribute('class', 'planisphere__pin');
+						link.setAttribute('data-trip-id', pin.id);
+						link.setAttribute('aria-label', pin.title);
+						const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+						dot.setAttribute('cx', String(x));
+						dot.setAttribute('cy', String(y));
+						dot.setAttribute('r', String(r));
+						link.appendChild(dot);
+						link.addEventListener('mouseenter', (event) => {
+							showTooltip(pin, event);
+							root.dispatchEvent(
+								new CustomEvent('planisphere-pin-hover', {
+									bubbles: true,
+									detail: { id: pin.id },
+								}),
+							);
+						});
+						link.addEventListener('mousemove', (event) => showTooltip(pin, event));
+						link.addEventListener('mouseleave', () => {
+							hideTooltip();
+							root.dispatchEvent(
+								new CustomEvent('planisphere-pin-hover', {
+									bubbles: true,
+									detail: { id: '' },
+								}),
+							);
+						});
+						link.addEventListener('click', (event) => event.stopPropagation());
+						pinLayer.appendChild(link);
+					}
+				}
+
+				function emitCountry(code) {
+					root.dispatchEvent(
+						new CustomEvent('planisphere-country', {
+							bubbles: true,
+							detail: { code },
+						}),
+					);
+				}
+
+				function setCountry(code, opts = {}) {
+					const next = code ? String(code).toUpperCase() : '';
+					selected = next;
+					root.dataset.selectedCountry = next;
+					pinLayer.replaceChildren();
+					hideTooltip();
+					svg.querySelectorAll('path.country.is-visited').forEach((path) => {
+						path.classList.toggle('is-selected', Boolean(next) && path.id === next);
+					});
+					if (worldBtn instanceof HTMLElement) worldBtn.hidden = !next;
+					const path = next ? svg.querySelector(`path.country#${CSS.escape(next)}`) : null;
+					let view = WORLD_VIEW;
+					if (path) {
+						const countryPins = trips
+							.map((trip) => trip.byCountry?.[next])
+							.filter(Boolean)
+							.map((point) => project(point.lat, point.lng));
+						let box = largestRingBox(path);
+						if (countryPins.length) {
+							const pinBox = bboxOfPoints(countryPins);
+							const minW = 48;
+							const minH = 24;
+							pinBox.x -= Math.max(0, (minW - pinBox.width) / 2);
+							pinBox.y -= Math.max(0, (minH - pinBox.height) / 2);
+							pinBox.width = Math.max(pinBox.width, minW);
+							pinBox.height = Math.max(pinBox.height, minH);
+							box = pinBox;
+						}
+						view = paddedView(box);
+					}
+					animateViewBox(svg, view);
+					renderPins(next, view);
+					if (!opts.silent) emitCountry(next);
+				}
+
+				svg.querySelectorAll('path.country.is-visited').forEach((path) => {
+					if (!path.hasAttribute('tabindex')) path.setAttribute('tabindex', '0');
+					path.addEventListener('click', (event) => {
+						event.preventDefault();
+						setCountry(path.id === selected ? '' : path.id);
+					});
+					path.addEventListener('keydown', (event) => {
+						if (event.key === 'Enter' || event.key === ' ') {
+							event.preventDefault();
+							setCountry(path.id === selected ? '' : path.id);
+						}
+					});
+				});
+
+				svg.addEventListener('click', (event) => {
+					if (event.target === svg || (event.target instanceof Element && event.target.classList.contains('ocean'))) {
+						if (selected) setCountry('');
+					}
+				});
+
+				worldBtn?.addEventListener('click', () => setCountry(''));
+
+				root.addEventListener('planisphere-set-country', (event) => {
+					const code = event instanceof CustomEvent ? String(event.detail?.code || '') : '';
+					setCountry(code, { silent: true });
+				});
+
+				if (selected) setCountry(selected, { silent: true, immediate: true });
+			});
+		</script>
+	)
+}

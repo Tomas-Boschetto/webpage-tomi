@@ -10,10 +10,11 @@ interface Props {
 	items: ItineraryItem[];
 	tripTitle: string;
 	locale?: Locale;
+	compact?: boolean;
 }
 
 const locale: Locale = Astro.props.locale || DEFAULT_LOCALE;
-const { items, tripTitle } = Astro.props;
+const { items, tripTitle, compact = false } = Astro.props;
 const mappable = items.filter((i) => i.lat != null && i.lng != null);
 const payload = mappable.map((i) => {
 	const mode: TransportMode = isTransportMode(i.transport_mode) ? i.transport_mode : 'other';
@@ -41,11 +42,11 @@ const tiles = mapTiles(env.CARTO_API_KEY, Astro.url.hostname, env.SITE_URL);
 
 {
 	mappable.length > 0 && (
-		<div class="trip-map-wrap" aria-label={t(locale, 'trip.map.aria')}>
+		<div class:list={['trip-map-wrap', compact && 'trip-map-wrap--compact']} aria-label={t(locale, 'trip.map.aria')}>
 			<div class="trip-map__header">
 				<div>
 					<h2 class="trip-map__title">{t(locale, 'trip.map')}</h2>
-					<p class="trip-map__lead">{t(locale, 'trip.map.lead')}</p>
+					{!compact && <p class="trip-map__lead">{t(locale, 'trip.map.lead')}</p>}
 				</div>
 				<div class="trip-export">
 					{googleMapsDirUrl && (
@@ -111,7 +112,6 @@ const tiles = mapTiles(env.CARTO_API_KEY, Astro.url.hostname, env.SITE_URL);
 					var preferReduced =
 						window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 					var scrollBehavior = preferReduced ? 'auto' : 'smooth';
-					var listPanel = document.querySelector('[data-itinerary-list]');
 					var hoverId = null;
 					var markers = {};
 
@@ -139,11 +139,10 @@ const tiles = mapTiles(env.CARTO_API_KEY, Astro.url.hostname, env.SITE_URL);
 						var el = document.getElementById('stop-' + id);
 						if (el) {
 							el.classList.add('itinerary__item--hover');
-							if (fromMap && listPanel) {
-								var panelRect = listPanel.getBoundingClientRect();
+							if (fromMap) {
 								var elRect = el.getBoundingClientRect();
 								var outOfView =
-									elRect.top < panelRect.top || elRect.bottom > panelRect.bottom;
+									elRect.top < 88 || elRect.bottom > window.innerHeight - 24;
 								if (outOfView) {
 									el.scrollIntoView({ behavior: scrollBehavior, block: 'nearest' });
 								}
