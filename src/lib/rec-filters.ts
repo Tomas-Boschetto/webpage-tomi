@@ -162,12 +162,16 @@ function dateKey(value: string | null | undefined): number {
 	return Number.isNaN(t) ? 0 : t;
 }
 
-/** Movies sort by release; books sort by month read. */
+/** Undated items (e.g. BC works) rank as the oldest, since pre-1970 dates are negative. */
+const UNDATED = -Number.MAX_SAFE_INTEGER;
+
+/** Movies sort by original release; books by edition date, then first publication. */
 function recDateKey(item: Recommendation): number {
-	if (item.type === 'movie') {
-		return dateKey(item.original_published_at) || dateKey(item.edition_published_at);
-	}
-	return dateKey(item.experienced_at);
+	const key =
+		item.type === 'movie'
+			? dateKey(item.original_published_at) || dateKey(item.edition_published_at)
+			: dateKey(item.edition_published_at) || dateKey(item.original_published_at);
+	return key || UNDATED;
 }
 
 function tripDateKey(trip: Trip): number {

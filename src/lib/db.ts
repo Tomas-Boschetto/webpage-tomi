@@ -18,7 +18,7 @@ export async function listPublished(
 				 ORDER BY
 				 	CASE
 				 		WHEN type = 'movie' THEN COALESCE(original_published_at, edition_published_at)
-				 		ELSE experienced_at
+				 		ELSE COALESCE(edition_published_at, original_published_at)
 				 	END DESC,
 				 	created_at DESC`,
 			)
@@ -34,7 +34,7 @@ export async function listPublished(
 			 ORDER BY
 			 	CASE
 			 		WHEN type = 'movie' THEN COALESCE(original_published_at, edition_published_at)
-			 		ELSE experienced_at
+			 		ELSE COALESCE(edition_published_at, original_published_at)
 			 	END DESC,
 			 	created_at DESC`,
 		)
