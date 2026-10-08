@@ -26,6 +26,7 @@ import { DEFAULT_LOCALE, localizedPath, type Locale } from '../../i18n/locales';
 import { t } from '../../i18n';
 import { localizeRecommendations, localizeTrips } from '../../lib/i18n-content';
 import { recommendationsTypeRedirect } from '../../lib/site';
+import { searchHaystack } from '../../lib/search';
 
 interface Props {
 	locale?: Locale;
@@ -52,6 +53,7 @@ const authorParam = Astro.url.searchParams.get('author')?.trim() || '';
 const directorParam = Astro.url.searchParams.get('director')?.trim() || '';
 const actorParam = Astro.url.searchParams.get('actor')?.trim() || '';
 const countryParam = Astro.url.searchParams.get('country')?.trim().toUpperCase() || '';
+const searchParam = Astro.url.searchParams.get('q')?.trim().slice(0, 100) || '';
 const sortParam = Astro.url.searchParams.get('sort');
 const minRating = parseMinRating(Astro.url.searchParams.get('min_rating'));
 const recSort = parseRecSort(sortParam);
@@ -115,11 +117,18 @@ const tripCards = await Promise.all(
 					byCountry,
 				}
 			: null;
+		const countries = uniqueTripCountries(items);
 		return {
 			trip,
 			stopCount: items.length,
-			countries: uniqueTripCountries(items),
+			countries,
 			pin,
+			searchText: searchHaystack([
+				trip.title,
+				trip.summary,
+				...items.map((item) => item.place_name),
+				...countries.map((country) => country.name),
+			]),
 		};
 	}),
 );
@@ -152,6 +161,12 @@ const showWikidataCredit = mediaItems.some(
 	(item) => accoladesSource(item.accolades) === 'wikidata',
 );
 
+const searchPlaceholder = showTravel
+	? t(locale, 'recs.searchPlaceholder.travel')
+	: activeType === 'book'
+		? t(locale, 'recs.searchPlaceholder.books')
+		: t(locale, 'recs.searchPlaceholder.movies');
+
 const sectionBlurb = showTravel
 	? t(locale, 'recs.blurb.travel')
 	: activeType === 'book'
@@ -182,6 +197,26 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 		</div>
 		{
 			(showMediaToolbar || showTravelToolbar) && (
+				<div class="rec-head-tools">
+				<label class="rec-search">
+					<span class="sr-only">{t(locale, 'recs.search')}</span>
+					<svg class="rec-search__icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+						<circle cx="8.5" cy="8.5" r="5.75" fill="none" stroke="currentColor" stroke-width="1.6" />
+						<path d="m13 13 4.25 4.25" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+					</svg>
+					<input
+						class="rec-search__input"
+						type="search"
+						name="q"
+						form="rec-toolbar"
+						value={searchParam}
+						placeholder={searchPlaceholder}
+						autocomplete="off"
+						enterkeyhint="search"
+						maxlength="100"
+						data-rec-search
+					/>
+				</label>
 				<details
 					class="rec-filters"
 					data-rec-filters
@@ -348,6 +383,7 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 		)
 	}
 				</details>
+				</div>
 			)
 		}
 	</header>
@@ -359,16 +395,23 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 			<section class="travel-split" data-travel-split>
 				<div class="travel-split__list" data-travel-list>
 					<div class="rec-list travel-split__cards">
-						{tripCards.map(({ trip, stopCount, countries }) => (
+						{tripCards.map(({ trip, stopCount, countries, searchText }) => (
 							<TripCard
 								trip={trip}
 								stopCount={stopCount}
 								countries={countries}
+								searchText={searchText}
 								locale={locale}
 							/>
 						))}
 					</div>
-					<p class="travel-split__empty empty" data-travel-empty hidden>
+					<p
+						class="travel-split__empty empty"
+						data-travel-empty
+						data-msg-country={t(locale, 'recs.emptyCountry')}
+						data-msg-search={t(locale, 'recs.searchEmpty')}
+						hidden
+					>
 						{t(locale, 'recs.emptyCountry')}
 					</p>
 				</div>
@@ -398,6 +441,9 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 						<div class="rec-infinite-sentinel" data-rec-sentinel aria-hidden="true"></div>
 					)}
 				</div>
+				<p class="empty" data-search-empty hidden>
+					{t(locale, 'recs.searchEmpty')}
+				</p>
 				<p class="rec-infinite-status sr-only" data-rec-status role="status" aria-live="polite"></p>
 				{(showTmdbCredit || showOpenLibraryCredit || showUnsplashCredit || showWikidataCredit) && (
 					<p class="rec-attribution">
@@ -465,6 +511,8 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 </BaseLayout>
 
 <script>
+	import { matchesSearch } from '../../lib/search';
+
 	document.querySelectorAll('[data-rec-filters]').forEach((filters) => {
 		if (!(filters instanceof HTMLDetailsElement)) return;
 		document.addEventListener('click', (event) => {
@@ -506,6 +554,29 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 		});
 	});
 
+	const searchInput = document.querySelector('[data-rec-search]');
+	const searchListeners: Array<() => void> = [];
+
+	function currentQuery() {
+		return searchInput instanceof HTMLInputElement ? searchInput.value.trim() : '';
+	}
+
+	function syncSearchUrl(query: string) {
+		const url = new URL(window.location.href);
+		if (query) url.searchParams.set('q', query);
+		else url.searchParams.delete('q');
+		history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+	}
+
+	searchInput?.addEventListener('input', () => {
+		syncSearchUrl(currentQuery());
+		searchListeners.forEach((listener) => listener());
+	});
+	searchInput?.addEventListener('keydown', (event) => {
+		// Filtering is live; Enter should not reload the page.
+		if (event instanceof KeyboardEvent && event.key === 'Enter') event.preventDefault();
+	});
+
 	const infiniteList = document.querySelector('[data-rec-infinite]');
 	if (infiniteList instanceof HTMLElement) {
 		const pageSize = Math.max(1, Number(infiniteList.dataset.pageSize) || 10);
@@ -526,7 +597,32 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 			if (statusEl instanceof HTMLElement) statusEl.textContent = message;
 		}
 
+		const searchEmpty = document.querySelector('[data-search-empty]');
+
+		function applyMediaSearch() {
+			const query = currentQuery();
+			if (query) {
+				let visible = 0;
+				items.forEach((el) => {
+					const show = matchesSearch(el.getAttribute('data-search') || '', query);
+					el.toggleAttribute('hidden', !show);
+					if (show) visible += 1;
+				});
+				if (searchEmpty instanceof HTMLElement) searchEmpty.hidden = visible > 0;
+				setStatus(formatStatus(msgAllTpl, { shown: visible, total: visible }));
+				return;
+			}
+			items.forEach((el, index) => el.toggleAttribute('hidden', index >= shown));
+			if (searchEmpty instanceof HTMLElement) searchEmpty.hidden = true;
+			setStatus(
+				shown < items.length
+					? formatStatus(msgMoreTpl, { shown, total: items.length })
+					: formatStatus(msgAllTpl, { total: items.length }),
+			);
+		}
+
 		function revealMore() {
+			if (currentQuery()) return;
 			const next = items.slice(shown, shown + pageSize);
 			if (!next.length) return;
 			next.forEach((el) => el.removeAttribute('hidden'));
@@ -554,6 +650,9 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 			observer.observe(sentinel);
 			setStatus(formatStatus(msgMoreTpl, { shown, total: items.length }));
 		}
+
+		searchListeners.push(applyMediaSearch);
+		if (currentQuery()) applyMediaSearch();
 	}
 
 	const split = document.querySelector('[data-travel-split]');
@@ -606,21 +705,36 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 			history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 		}
 
-		function applyCountryFilter(code) {
-			const normalized = code ? String(code).toUpperCase() : '';
+		let activeCountry = '';
+
+		function applyTravelVisibility() {
+			const query = currentQuery();
 			let visible = 0;
 			cards.forEach((card) => {
+				if (!(card instanceof HTMLElement)) return;
 				const countries = String(card.getAttribute('data-countries') || '')
 					.split(',')
 					.map((c) => c.trim().toUpperCase())
 					.filter(Boolean);
-				const show = !normalized || countries.includes(normalized);
+				const show =
+					(!activeCountry || countries.includes(activeCountry)) &&
+					matchesSearch(card.getAttribute('data-search') || '', query);
 				card.hidden = !show;
 				if (show) visible += 1;
 			});
 			if (emptyEl instanceof HTMLElement) {
 				emptyEl.hidden = visible > 0;
+				emptyEl.textContent =
+					(query ? emptyEl.dataset.msgSearch : emptyEl.dataset.msgCountry) || emptyEl.textContent;
 			}
+		}
+
+		searchListeners.push(applyTravelVisibility);
+
+		function applyCountryFilter(code) {
+			const normalized = code ? String(code).toUpperCase() : '';
+			activeCountry = normalized;
+			applyTravelVisibility();
 			if (countrySelect instanceof HTMLSelectElement && countrySelect.value !== normalized) {
 				countrySelect.value = normalized;
 			}
@@ -690,6 +804,7 @@ const msgShowingAll = t(locale, 'recs.showingAll', { total: '{total}' });
 			persistCountry('');
 			stampTripLinks('');
 			syncFilterCount();
+			if (currentQuery()) applyTravelVisibility();
 		}
 	}
 </script>

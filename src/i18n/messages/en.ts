@@ -187,6 +187,11 @@ export const en = {
 	'recs.sortTitleAsc': 'Title A–Z',
 	'recs.sortTitleDesc': 'Title Z–A',
 	'recs.emptyCountry': 'No trips for that country.',
+	'recs.search': 'Search',
+	'recs.searchPlaceholder.movies': 'Search titles, directors, actors…',
+	'recs.searchPlaceholder.books': 'Search titles, authors…',
+	'recs.searchPlaceholder.travel': 'Search trips, places, countries…',
+	'recs.searchEmpty': 'Nothing matches your search.',
 	'recs.attr.tmdbPre': 'Movie posters courtesy of',
 	'recs.attr.tmdbPost':
 		'. This product uses the TMDB API but is not endorsed or certified by TMDB.',

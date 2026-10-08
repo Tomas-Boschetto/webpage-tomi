@@ -189,6 +189,11 @@ export const it: Record<MessageKey, string> = {
 	'recs.sortTitleAsc': 'Titolo A–Z',
 	'recs.sortTitleDesc': 'Titolo Z–A',
 	'recs.emptyCountry': 'Nessun viaggio per quel paese.',
+	'recs.search': 'Cerca',
+	'recs.searchPlaceholder.movies': 'Cerca titoli, registi, attori…',
+	'recs.searchPlaceholder.books': 'Cerca titoli, autori…',
+	'recs.searchPlaceholder.travel': 'Cerca viaggi, luoghi, paesi…',
+	'recs.searchEmpty': 'Nessun risultato per la tua ricerca.',
 	'recs.attr.tmdbPre': 'Locandine dei film per cortesia di',
 	'recs.attr.tmdbPost':
 		'. Questo prodotto usa l’API di TMDB ma non è approvato né certificato da TMDB.',

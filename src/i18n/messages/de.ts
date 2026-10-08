@@ -189,6 +189,11 @@ export const de: Record<MessageKey, string> = {
 	'recs.sortTitleAsc': 'Titel A–Z',
 	'recs.sortTitleDesc': 'Titel Z–A',
 	'recs.emptyCountry': 'Keine Reisen für dieses Land.',
+	'recs.search': 'Suche',
+	'recs.searchPlaceholder.movies': 'Titel, Regie, Besetzung suchen…',
+	'recs.searchPlaceholder.books': 'Titel, Autoren suchen…',
+	'recs.searchPlaceholder.travel': 'Reisen, Orte, Länder suchen…',
+	'recs.searchEmpty': 'Keine Treffer für deine Suche.',
 	'recs.attr.tmdbPre': 'Filmplakate mit freundlicher Genehmigung von',
 	'recs.attr.tmdbPost':
 		'. Dieses Produkt nutzt die TMDB-API, ist aber nicht von TMDB genehmigt oder zertifiziert.',

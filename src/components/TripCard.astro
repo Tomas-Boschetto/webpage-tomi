@@ -10,11 +10,13 @@ interface Props {
 	trip: Trip;
 	stopCount?: number;
 	countries?: TripCountry[];
+	/** Normalized text (title, stops, countries) the recommendations search matches against. */
+	searchText?: string;
 	locale?: Locale;
 }
 
 const locale: Locale = Astro.props.locale || DEFAULT_LOCALE;
-const { trip, stopCount, countries = [] } = Astro.props;
+const { trip, stopCount, countries = [], searchText = '' } = Astro.props;
 const hasCover = Boolean(trip.image_url);
 const countriesAttr = countries.map((c) => c.code.toUpperCase()).join(',');
 const summaryWords = trip.summary.trim().split(/\s+/).filter(Boolean);
@@ -46,6 +48,7 @@ const unsplashHref =
 	data-trip-card
 	data-trip-id={trip.id}
 	data-countries={countriesAttr}
+	data-search={searchText || undefined}
 >
 	{
 		hasCover && (

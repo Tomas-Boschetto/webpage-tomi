@@ -8,6 +8,7 @@ import {
 } from '../lib/types';
 import { DEFAULT_LOCALE, localizedPath, type Locale } from '../i18n/locales';
 import { t } from '../i18n';
+import { searchHaystack } from '../lib/search';
 
 interface Props {
 	item: Recommendation;
@@ -32,9 +33,14 @@ const coverAlt = t(locale, item.type === 'book' ? 'recs.coverOf' : 'recs.posterO
 const detailHref = localizedPath(locale, `/recommendations/${item.id}`);
 const blurb = item.commentary?.trim() || '';
 const blurbShort = blurb.length > 220 ? `${blurb.slice(0, 217).trimEnd()}…` : blurb;
+const searchText = searchHaystack([item.title, item.director, item.cast_members, item.genre]);
 ---
 
-<article class:list={['rec-item', hasCover && 'rec-item--with-cover']} hidden={deferred || undefined}>
+<article
+	class:list={['rec-item', hasCover && 'rec-item--with-cover']}
+	hidden={deferred || undefined}
+	data-search={searchText}
+>
 	{
 		hasCover && (
 			<a class="rec-item__media" href={detailHref}>
