@@ -41,6 +41,16 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 					id="admin-app"
 					data-view={view}
 				>
+					<section class="admin-add admin-add--leading">
+						<button class="btn btn--primary" type="button" id="add-toggle" aria-expanded="false">
+							{view === 'books' ? 'Add book' : 'Add movie'}
+						</button>
+						<div class="admin-expand" id="add-panel" hidden>
+							<div id="add-form-host"></div>
+						</div>
+						<p class="form__status" id="admin-status" role="status" aria-live="polite"></p>
+					</section>
+
 					{
 						view === 'movies' ? (
 							<section class="admin-panel">
@@ -58,13 +68,9 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 					}
 
 					<section class="admin-add">
-						<button class="btn btn--primary" type="button" id="add-toggle">
+						<button class="btn btn--primary" type="button" id="add-toggle-bottom" aria-expanded="false">
 							{view === 'books' ? 'Add book' : 'Add movie'}
 						</button>
-						<div class="admin-expand" id="add-panel" hidden>
-							<div id="add-form-host"></div>
-						</div>
-						<p class="form__status" id="admin-status" role="status" aria-live="polite"></p>
 					</section>
 				</div>
 			</>
@@ -94,8 +100,10 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 			const listEl = document.getElementById(view === 'books' ? 'books-list' : 'movies-list');
 			const statusEl = document.getElementById('admin-status');
 			const addToggle = document.getElementById('add-toggle');
+			const addToggleBottom = document.getElementById('add-toggle-bottom');
 			const addPanel = document.getElementById('add-panel');
 			const addFormHost = document.getElementById('add-form-host');
+			const addLabel = view === 'books' ? 'Add book' : 'Add movie';
 
 			/** @type {any[]} */
 			let itemsCache = [];
@@ -123,10 +131,34 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 				});
 			}
 
+			function setAddExpanded(open) {
+				const expanded = open ? 'true' : 'false';
+				addToggle?.setAttribute('aria-expanded', expanded);
+				addToggleBottom?.setAttribute('aria-expanded', expanded);
+				if (addToggle) addToggle.textContent = open ? 'Cancel' : addLabel;
+				if (addToggleBottom) addToggleBottom.textContent = open ? 'Cancel' : addLabel;
+			}
+
 			function closeAddPanel() {
 				addPanel.hidden = true;
 				addFormHost.innerHTML = '';
-				addToggle.setAttribute('aria-expanded', 'false');
+				setAddExpanded(false);
+			}
+
+			function openAddPanel() {
+				if (!addPanel || !addFormHost) return;
+				closeAllEditors();
+				if (!addPanel.hidden) {
+					closeAddPanel();
+					return;
+				}
+				addPanel.hidden = false;
+				setAddExpanded(true);
+				setStatus('');
+				mountForm(addFormHost, type, null, 'create', () => {
+					closeAddPanel();
+				});
+				addPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 			}
 
 			/**
@@ -1167,19 +1199,8 @@ const view = viewParam === 'books' ? 'books' : 'movies';
 				listEl.replaceChildren(...staging.childNodes);
 			}
 
-			addToggle?.addEventListener('click', () => {
-				closeAllEditors();
-				if (!addPanel.hidden) {
-					closeAddPanel();
-					return;
-				}
-				addPanel.hidden = false;
-				addToggle.setAttribute('aria-expanded', 'true');
-				setStatus('');
-				mountForm(addFormHost, type, null, 'create', () => {
-					closeAddPanel();
-				});
-			});
+			addToggle?.addEventListener('click', openAddPanel);
+			addToggleBottom?.addEventListener('click', openAddPanel);
 
 			loadList();
 		</script>
